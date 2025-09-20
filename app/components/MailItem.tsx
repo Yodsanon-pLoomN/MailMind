@@ -13,7 +13,7 @@ function badgeClass(status: Mail["status"]) {
 
 export default function MailItem({ mail }: { mail: Mail }) {
   return (
-    <div className="p-4 rounded-lg border hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+    <div className="p-4 rounded-lg hover:bg-[#E9ECEF] transition text-left cursor-pointer flex justify-between items-center shadow-sm">
       <div className="min-w-0">
         <div className="font-semibold truncate">{mail.subject}</div>
         <div className="text-sm text-gray-600 truncate">

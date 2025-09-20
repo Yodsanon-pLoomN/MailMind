@@ -14,7 +14,7 @@ export default function Pagination({ page, totalPages, onChange }: Props) {
       <button
         onClick={() => onChange(Math.max(page - 1, 1))}
         disabled={page === 1}
-        className="px-3 py-1 border rounded disabled:opacity-50"
+        className="px-3 py-1 hover:bg-gray-100 transition text-left rounded disabled:opacity-50 disabled:hover:bg-transparent"
       >
         Prev
       </button>
@@ -25,7 +25,7 @@ export default function Pagination({ page, totalPages, onChange }: Props) {
           <button
             key={p}
             onClick={() => onChange(p)}
-            className={`px-3 py-1 border rounded ${page === p ? "bg-gray-200 font-bold" : ""}`}
+            className={`px-3 py-1 hover:bg-gray-100 transition text-left rounded ${page === p ? "bg-gray-200" : ""}`}
           >
             {p}
           </button>
@@ -35,7 +35,7 @@ export default function Pagination({ page, totalPages, onChange }: Props) {
       <button
         onClick={() => onChange(Math.min(page + 1, totalPages))}
         disabled={page === totalPages}
-        className="px-3 py-1 border rounded disabled:opacity-50"
+        className="px-3 py-1 hover:bg-gray-100 transition text-left rounded disabled:opacity-50"
       >
         Next
       </button>

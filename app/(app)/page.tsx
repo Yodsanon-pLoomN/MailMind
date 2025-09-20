@@ -4,7 +4,7 @@ import { mails } from "@/app/data/dummy";
 
 export default function Home() {
   return (
-    <div className="mx-auto max-w-screen-xl px-4 pt-6">
+    <div className="mx-auto max-w-screen-xl px-4 py-6">
       <div className="md:flex md:gap-6 items-start space-y-6">
         <Navbar />
 

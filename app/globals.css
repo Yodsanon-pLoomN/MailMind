@@ -2,7 +2,7 @@
 
 :root {
   --background: #E9ECEF;
-  --foreground: #212529;
+  --foreground: #343A40;
 }
 
 body {
@@ -10,3 +10,4 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
