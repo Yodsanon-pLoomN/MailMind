@@ -1,9 +1,8 @@
 "use client";
-import { Back } from "@/app/components/Back";
 import Link from "next/link";
 import { useState } from "react";
 
-export default function SettingsPage() {
+export default function Settings() {
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("17:00");
   const [meetingDuration, setMeetingDuration] = useState("30");
