@@ -1,22 +1,19 @@
 import { Navbar } from "@/app/components/Navbar";
+import MailList from "@/app/components/MailList";
+import { mails } from "@/app/data/dummy";
 
 export default function Home() {
   return (
-    <div className="flex flex-col md:flex-row  min-h-screen bg-gray-100 md:gap-6 gap-0">
-      {/* Navbar */}
-      <Navbar />
+    <div className="mx-auto max-w-screen-xl px-4 pt-6">
+      <div className="md:flex md:gap-6 items-start space-y-6">
+        <Navbar />
 
-      {/* Main Container */}
-      <div className="mx-auto max-w-screen-xl w-full flex flex-col p-6 bg-white min-h-[90vh] my-6 rounded-lg shadow-md">
-        {/* Header */}
-        <h1 className="text-4xl font-bold mb-6">Inbox</h1>
-
-        {/* List Section */}
-        <div className="space-y-4">
-          <div className="p-4 bg-amber-200 rounded">Mail item 1</div>
-          <div className="p-4 bg-amber-200 rounded">Mail item 2</div>
-          <div className="p-4 bg-amber-200 rounded">Mail item 3</div>
-        </div>
+        <main className="flex-1 drop-shadow-lg">
+          <section className="bg-white rounded-lg shadow p-6 min-h-[70vh]">
+            <h1 className="text-3xl font-bold mb-6">Inbox</h1>
+            <MailList items={mails} perPage={10} />
+          </section>
+        </main>
       </div>
     </div>
   );
