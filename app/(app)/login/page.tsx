@@ -1,6 +1,7 @@
 "use client";
 
 
+import SignIn from "@/app/components/sign-in";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -42,6 +43,8 @@ export default function LoginPage() {
             </svg>
             <span className="text-sm font-medium">Sign in with Google</span>
           </button>
+
+          <SignIn />
 
           {/* Terms and Service */}
           <p className="text-xs text-gray-500 mt-6 text-center">
