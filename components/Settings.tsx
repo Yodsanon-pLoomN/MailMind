@@ -1,72 +1,78 @@
 // components/SettingsPanel.tsx
-'use client'
+"use client";
 
-import * as React from 'react'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import * as React from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
   SelectValue,
-} from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const weekDays = [
-  { key: 'mon', label: 'จันทร์' },
-  { key: 'tue', label: 'อังคาร' },
-  { key: 'wed', label: 'พุธ' },
-  { key: 'thu', label: 'พฤหัสบดี' },
-  { key: 'fri', label: 'ศุกร์' },
-  { key: 'sat', label: 'เสาร์' },
-  { key: 'sun', label: 'อาทิตย์' },
-]
+  { key: "mon", label: "จันทร์" },
+  { key: "tue", label: "อังคาร" },
+  { key: "wed", label: "พุธ" },
+  { key: "thu", label: "พฤหัสบดี" },
+  { key: "fri", label: "ศุกร์" },
+  { key: "sat", label: "เสาร์" },
+  { key: "sun", label: "อาทิตย์" },
+];
 
 export default function SettingsPanel() {
   // mock state เฉย ๆ
-  const [workdayNotify, setWorkdayNotify] = React.useState(true)
-  const [calendarEnabled, setCalendarEnabled] = React.useState(true)
-  const [gmailSync, setGmailSync] = React.useState(true)
+  const [workdayNotify, setWorkdayNotify] = React.useState(true);
+  const [calendarEnabled, setCalendarEnabled] = React.useState(true);
+  const [gmailSync, setGmailSync] = React.useState(true);
 
   // วันทำงาน / วันหยุด
-  const [workDays, setWorkDays] = React.useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri'])
-  const [holidays, setHolidays] = React.useState<string[]>(['sat', 'sun'])
+  const [workDays, setWorkDays] = React.useState<string[]>([
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+  ]);
+  const [holidays, setHolidays] = React.useState<string[]>(["sat", "sun"]);
 
   // ศัพนาม
-  const [title, setTitle] = React.useState<'mr' | 'mrs' | 'ms'>('mr')
+  const [title, setTitle] = React.useState<"mr" | "mrs" | "ms">("mr");
 
   // เลือก generative ai
-  const [aiProvider, setAiProvider] = React.useState<'openai' | 'gemini' | 'claude'>('openai')
+  const [aiProvider, setAiProvider] = React.useState<
+    "openai" | "gemini" | "claude"
+  >("openai");
 
   const toggleWorkDay = (day: string) => {
     setWorkDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    )
-  }
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
 
   const toggleHoliday = (day: string) => {
     setHolidays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    )
-  }
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-
       {/* Working hours */}
       <section className="bg-white border rounded-xl p-5 space-y-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold">Working hours</h3>
             <p className="text-sm text-muted-foreground">
-              กำหนดช่วงเวลาที่ระบบจะสร้าง draft ให้อัตโนมัติ
+              กำหนดช่วงเวลาทำงาน
             </p>
           </div>
-          
         </div>
 
         {/* เวลา */}
@@ -91,17 +97,16 @@ export default function SettingsPanel() {
                 type="button"
                 onClick={() => toggleWorkDay(d.key)}
                 className={cn(
-                  'px-3 py-1 rounded-full text-sm border transition',
+                  "px-3 py-1 rounded-full text-sm border transition",
                   workDays.includes(d.key)
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-slate-50 text-slate-600 border-slate-200',
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
                 )}
               >
                 {d.label}
               </button>
             ))}
           </div>
-
         </div>
 
         {/* เขตเวลา */}
@@ -114,20 +119,19 @@ export default function SettingsPanel() {
             <SelectContent>
               <SelectItem value="asia-bangkok">Asia/Bangkok (GMT+7)</SelectItem>
               <SelectItem value="asia-tokyo">Asia/Tokyo (GMT+9)</SelectItem>
-              <SelectItem value="europe-london">Europe/London (GMT+0)</SelectItem>
+              <SelectItem value="europe-london">
+                Europe/London (GMT+0)
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </section>
-
-
 
       {/* ศัพนาม */}
       <section className="bg-white border rounded-xl p-5 space-y-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold">Title / ศัพนาม</h3>
-          
           </div>
         </div>
 
@@ -143,7 +147,6 @@ export default function SettingsPanel() {
               <SelectItem value="ms">นางสาว</SelectItem>
             </SelectContent>
           </Select>
-          
         </div>
       </section>
 
@@ -152,15 +155,16 @@ export default function SettingsPanel() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold">Generative AI engine</h3>
-            <p className="text-sm text-muted-foreground">
-              เลือกผู้ให้บริการ AI ที่จะให้ระบบใช้ตอนสรุปเมล / สร้างร่างตอบกลับ / translate
-            </p>
+            
           </div>
         </div>
 
         <div className="w-full sm:max-w-xs space-y-1">
           <Label htmlFor="aiProvider">Provider</Label>
-          <Select value={aiProvider} onValueChange={(v) => setAiProvider(v as any)}>
+          <Select
+            value={aiProvider}
+            onValueChange={(v) => setAiProvider(v as any)}
+          >
             <SelectTrigger id="aiProvider">
               <SelectValue placeholder="เลือก AI" />
             </SelectTrigger>
@@ -173,11 +177,40 @@ export default function SettingsPanel() {
         </div>
       </section>
 
+      {/* Reply Tone / โทนการตอบเมล */}
+      <section className="bg-white border rounded-xl p-5 space-y-4 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold">Reply tone</h3>
+            <p className="text-sm text-muted-foreground">
+              เลือกโทนภาษาที่ใช้ในการตอบกลับอีเมล เช่น ทางการ (Formal)
+              หรือไม่ทางการ (Casual)
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full sm:max-w-xs space-y-1">
+          <Label htmlFor="toneSelect">Tone</Label>
+          <Select
+            defaultValue="formal"
+            onValueChange={(v) => console.log("selected tone:", v)}
+          >
+            <SelectTrigger id="toneSelect">
+              <SelectValue placeholder="เลือกโทนภาษา" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="formal">Formal (ทางการ)</SelectItem>
+              <SelectItem value="informal">Informal (ไม่ทางการ)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
       {/* action */}
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="outline">Reset</Button>
         <Button>Save changes</Button>
       </div>
     </div>
-  )
+  );
 }
