@@ -33,8 +33,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         params: {
           access_type: 'offline',
           prompt: 'consent',
-          scope:
-            'openid email profile https://www.googleapis.com/auth/gmail.readonly',
+          // 👇 ขอทุก scope ที่คุณติ๊กในรูป
+          scope: [
+            'openid',
+            'email',
+            'profile',
+
+            // Gmail
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://www.googleapis.com/auth/gmail.modify',
+            'https://www.googleapis.com/auth/gmail.send',
+
+            // Calendar
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/calendar.readonly',
+          ].join(' '),
         },
       },
     }),
@@ -48,7 +62,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async jwt({ token, account, user }) {
-      // Initial sign in
+      // initial sign in
       if (account && user) {
         return {
           ...token,
@@ -59,12 +73,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       }
 
-      // Return previous token if the access token has not expired yet
-      if (typeof token.accessTokenExpires === 'number' && Date.now() < token.accessTokenExpires) {
+      // token ยังไม่หมดอายุ
+      if (
+        typeof token.accessTokenExpires === 'number' &&
+        Date.now() < token.accessTokenExpires
+      ) {
         return token;
       }
 
-      // Access token has expired, try to refresh it
+      // หมดอายุ → refresh
       return await refreshAccessToken(token);
     },
     async session({ session, token }) {
@@ -82,7 +99,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 async function refreshAccessToken(token: any) {
   try {
     const url = 'https://oauth2.googleapis.com/token';
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -102,7 +119,7 @@ async function refreshAccessToken(token: any) {
       throw refreshedTokens;
     }
 
-    // Update the account in the database
+    // อัปเดตใน DB ด้วย
     if (token.userId) {
       await prisma.account.updateMany({
         where: {

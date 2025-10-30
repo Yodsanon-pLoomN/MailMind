@@ -71,7 +71,6 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-
 enum EmailStatus {
   DRAFT
   SENT
@@ -81,7 +80,16 @@ model Email {
   id             String       @id @default(cuid())
   messageId      String       @unique
   userId         String
-  isAppointment  Boolean?     
+
+  subject        String?
+  threadId       String?
+  from           String?
+
+  // เก็บเป็น string ISO (เพราะ n8n จะเขียนลง DB เหมือน replyText)
+  startDateISO   String?
+  endDateISO     String?
+
+  isAppointment  Boolean?
   replyText      String?      @db.Text
   status         EmailStatus  @default(DRAFT)
   createdAt      DateTime     @default(now())
@@ -90,6 +98,6 @@ model Email {
   user User @relation("UserEmails", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([threadId])
   @@map("emails")
 }
-

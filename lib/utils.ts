@@ -1,4 +1,4 @@
-import { type ClassValue } from "clsx";
+import { type ClassValue } from "clsx"; 
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -6,7 +6,6 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
 
 export interface NavbarProps {
   user: {
@@ -24,8 +23,9 @@ export interface EmailMessage {
   snippet: string;
   date: string;
   internalDate: string;
-  isRead: boolean;   // <— NEW
-  body?: string;     // <— NEW (เฉพาะหน้าอ่าน)
+  isRead: boolean;
+  body?: string;
+  status?: string;         // ✅ เพิ่มได้ เผื่อให้หน้า thread ใช้
 }
 
 export interface PaginatedEmails {
@@ -36,12 +36,13 @@ export interface PaginatedEmails {
 
 export interface Email {
   id: string;
-  threadId: string;          // <— add
+  threadId: string;
   from: string;
   subject: string;
   snippet: string;
   date: string;
-  isRead: boolean;           // <— add
+  isRead: boolean;
+  status?: string;         // ✅ เพิ่มตรงนี้
 }
 
 export interface EmailItemProps {
@@ -52,6 +53,22 @@ export interface EmailItemProps {
     subject: string;
     snippet: string;
     date: string;
-    isRead: boolean; // <— NEW
+    isRead: boolean;
+    status?: string;       // ✅ เพิ่มตรงนี้ด้วย
   };
+}
+
+export type ThreadMessage = {
+  id: string
+  threadId: string
+  from: string
+  subject: string
+  date: string
+  internalDate: string
+  snippet: string
+  isRead: boolean
+  startDateISO?: string
+  endDateISO?: string
+  body?: string
+  status?: string          // ✅ อันนี้คุณเพิ่มแล้ว ใช้ได้
 }

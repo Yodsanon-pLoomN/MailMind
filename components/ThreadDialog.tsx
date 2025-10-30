@@ -2,7 +2,11 @@
 
 import * as React from 'react'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -29,77 +33,92 @@ export default function ThreadDialog({
   onOpenChange,
   threadId,
   mainId,
+  onEmailUpdate, // 👈 callback สำหรับอัปเดต list ข้างนอก
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   threadId: string
   mainId?: string
+  onEmailUpdate?: (id: string, patch: any) => void
 }) {
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [messages, setMessages] = React.useState<ThreadMessage[]>([])
+
   const [draftLoading, setDraftLoading] = React.useState(false)
   const [sendLoading, setSendLoading] = React.useState(false)
   const [sendError, setSendError] = React.useState<string | null>(null)
+
   const [isAppointment, setIsAppointment] = React.useState<boolean | null>(null)
   const [reply, setReply] = React.useState('')
-  const [inited, setInited] = React.useState(false)
 
+  // โหลดเธรดจาก API
+  React.useEffect(() => {
+    if (!open || !threadId) return
+    const controller = new AbortController()
+
+    ;(async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`/api/threads/${threadId}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        })
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          throw new Error(d.error || 'Failed to load thread')
+        }
+        const data = await res.json()
+        setMessages(data.items ?? [])
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') setError(e.message)
+      } finally {
+        setLoading(false)
+      }
+    })()
+
+    return () => controller.abort()
+  }, [open, threadId])
+
+  // main msg = อันที่คลิก / หรืออันล่าสุด
   const main =
     messages.find((m) => m.id === mainId) ??
     (messages.length ? messages[messages.length - 1] : undefined)
   const rest = messages.filter((m) => m.id !== main?.id)
 
-  // โหลด thread จาก Gmail
-  React.useEffect(() => {
-    if (!open || !threadId) return
-    const controller = new AbortController()
-    ;(async () => {
-      try {
-        setLoading(true)
-        const res = await fetch(`/api/threads/${threadId}`, {
-          signal: controller.signal,
-          cache: 'no-store',
-        })
-        const data = await res.json()
-        setMessages(data.items ?? [])
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    })()
-    return () => controller.abort()
-  }, [open, threadId])
-
-  // ✅ เมื่อเปิดเมล → เช็คใน DB ก่อน
+  // เมื่อเปิด dialog แล้ว มี main แล้ว → เช็คใน DB ก่อนว่ามี record แล้วมั้ย
   React.useEffect(() => {
     if (!open || !main?.id) return
-
     const controller = new AbortController()
+
     ;(async () => {
       try {
-        const check = await fetch(`/api/email/check/${main.id}`, {
+        // 1) เช็คก่อน
+        const checkRes = await fetch(`/api/email/check/${main.id}`, {
           cache: 'no-store',
           signal: controller.signal,
         })
-        if (!check.ok) throw new Error('check failed')
-        const data = await check.json()
+        if (!checkRes.ok) throw new Error('check failed')
+        const check = await checkRes.json()
 
-        if (data.exists) {
-          // ✅ เคยมีแล้ว
-          setInited(true)
-          setIsAppointment(data.isAppointment)
-          setReply(data.replyText || '')
+        if (check.exists) {
+          // ✅ เคยเปิดแล้ว
+          setIsAppointment(check.isAppointment)
+          setReply(check.replyText || '')
 
-          // ถ้าเคยบันทึกแต่ยังไม่มีการ detect นัดหมาย → ข้าม draft
-          if (data.isAppointment === null) {
-            console.log('record exists but not processed yet → running n8n...')
+          // อัปเดต list ว่าอ่านแล้ว
+          onEmailUpdate?.(main.id, {
+            isRead: true,
+            status: check.status ?? 'DRAFT',
+          })
+
+          // ถ้ายังไม่ได้ process นัดหมายเลย (isAppointment === null) → ยิงหา n8n อีกรอบ
+          if (check.isAppointment === null) {
             await callDraft(main)
           }
         } else {
-          // ❌ ยังไม่เคย → init ใหม่ + call n8n
-          console.log('no record → init and call n8n...')
+          // ❌ ยังไม่เคยเปิด → init + draft
           await initAndDraft(main)
         }
       } catch (e) {
@@ -110,8 +129,9 @@ export default function ThreadDialog({
     return () => controller.abort()
   }, [open, main?.id])
 
-  // ✅ ฟังก์ชัน init + call n8n
+  // init record + call n8n
   async function initAndDraft(m: ThreadMessage) {
+    // สร้าง record ใน DB ก่อน
     await fetch('/api/email/init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -120,12 +140,23 @@ export default function ThreadDialog({
         subject: m.subject,
         snippet: m.snippet,
         from: m.from,
+        threadId: m.threadId,
       }),
     })
-    await callDraft(m)
+
+    // เรียก n8n ให้สร้าง draft
+    const data = await callDraft(m)
+
+    // แจ้ง list ว่าตอนนี้อีเมลนี้มี draft แล้ว + อ่านแล้ว
+    onEmailUpdate?.(m.id, {
+      status: 'DRAFT',
+      isRead: true,
+    })
+
+    return data
   }
 
-  // ✅ ฟังก์ชันเรียก n8n draft
+  // เรียก n8n เพื่อสร้าง draft / detect นัดหมาย
   async function callDraft(m: ThreadMessage) {
     try {
       setDraftLoading(true)
@@ -139,16 +170,23 @@ export default function ThreadDialog({
           from: m.from,
         }),
       })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'n8n draft failed')
+      }
+
       const data = await res.json()
+
       const appointment = data?.email?.isAppointment ?? data?.isAppointment ?? null
       setIsAppointment(appointment)
 
-      // ✅ ถ้ามี replyText ใน response ใช้เลย
       if (appointment === true) {
+        // ถ้า response มี reply เลย → ใช้เลย
         if (data?.email?.replyText) {
           setReply(data.email.replyText)
         } else {
-          // ไม่มีใน response → fetch จาก DB
+          // ถ้าไม่มี → ดึงจาก DB อีกรอบ
           const rr = await fetch(`/api/email/${m.id}`, { cache: 'no-store' })
           if (rr.ok) {
             const jj = await rr.json()
@@ -156,8 +194,11 @@ export default function ThreadDialog({
           }
         }
       } else {
+        // ไม่ใช่นัดหมาย → ช่องว่างให้พิมพ์เอง
         setReply('')
       }
+
+      return data
     } catch (e) {
       console.error('draft error', e)
     } finally {
@@ -165,16 +206,30 @@ export default function ThreadDialog({
     }
   }
 
+  // ส่งเมลจริง
   async function handleSend() {
     if (!main) return
     try {
       setSendLoading(true)
+      setSendError(null)
+
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId: main.id, replyText: reply }),
       })
-      if (!res.ok) throw new Error('send failed')
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'send failed')
+      }
+
+      // ✅ แจ้ง parent
+      onEmailUpdate?.(main.id, {
+        status: 'SENT',
+        isRead: true,
+      })
+
       onOpenChange(false)
     } catch (e: any) {
       setSendError(e.message)
@@ -184,46 +239,54 @@ export default function ThreadDialog({
   }
 
   const fmtDate = (x: string) => {
-    const d = new Date(Number(x) || x)
-    return d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+    const epoch = Number(x)
+    const d = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch) : new Date(x)
+    try {
+      return d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+    } catch {
+      return x
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[92vw] sm:max-w-4xl p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="px-6 pt-5 pb-3 border-b bg-muted/30">
-          <DialogTitle className="text-lg font-semibold">
+          <DialogTitle className="text-lg font-semibold line-clamp-2">
             {main?.subject || 'Conversation'}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {messages.length} message{messages.length !== 1 && 's'}
+            {isAppointment === true && ' • Detected appointment'}
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Loading conversation...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : (
           <ScrollArea className="max-h-[80vh]">
             {main && (
               <div className="p-6 space-y-6">
+                {/* header main msg */}
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       {!main.isRead && <Badge>New</Badge>}
-                      <h2 className="font-semibold text-base">{main.from}</h2>
+                      <h2 className="font-semibold text-base break-words">{main.from}</h2>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {fmtDate(main.internalDate || main.date)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{fmtDate(main.internalDate || main.date)}</p>
                   </div>
                 </div>
 
                 <Separator className="my-4" />
 
+                {/* main body */}
                 <div
                   className={cn(
                     'text-[15px] leading-7 whitespace-pre-wrap rounded-md border p-4 bg-muted/10',
-                    'overflow-x-auto wrap-break-word'
+                    'overflow-x-auto break-words'
                   )}
                   style={{ overflowWrap: 'anywhere' }}
                 >
@@ -232,12 +295,10 @@ export default function ThreadDialog({
 
                 <Separator className="my-6" />
 
-                {/* ✅ Reply Textarea */}
+                {/* reply */}
                 <div className="space-y-2">
                   <Label htmlFor="reply" className="text-sm">
-                    {isAppointment === true
-                      ? 'Suggested reply (auto-detected appointment)'
-                      : 'Reply'}
+                    {isAppointment === true ? 'Suggested reply' : 'Reply'}
                   </Label>
                   <Textarea
                     id="reply"
@@ -251,22 +312,56 @@ export default function ThreadDialog({
                     className="min-h-40"
                   />
                   <div className="flex items-center gap-3">
-                    <Button
-                      onClick={handleSend}
-                      disabled={sendLoading || draftLoading}
-                    >
+                    <Button onClick={handleSend} disabled={sendLoading || draftLoading}>
                       {sendLoading ? 'Sending...' : 'Send'}
                     </Button>
                     {draftLoading && (
-                      <span className="text-xs text-muted-foreground">
-                        Preparing draft…
-                      </span>
+                      <span className="text-xs text-muted-foreground">Preparing draft…</span>
                     )}
                     {sendError && (
                       <span className="text-xs text-red-600">{sendError}</span>
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* other messages */}
+            {rest.length > 0 && (
+              <div className="px-6 pb-6 space-y-4">
+                <Separator className="my-2" />
+                {rest.map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-lg border bg-muted/10 hover:bg-muted/20 transition-colors p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          {!m.isRead && (
+                            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                          )}
+                          <span className="text-sm font-medium break-words">{m.from}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 break-words">
+                          {fmtDate(m.internalDate || m.date)}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-x-auto break-words"
+                      style={{ overflowWrap: 'anywhere' }}
+                    >
+                      {m.body?.trim() || m.snippet}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {messages.length === 0 && (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                No messages found in this thread.
               </div>
             )}
           </ScrollArea>

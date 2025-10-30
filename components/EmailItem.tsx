@@ -2,13 +2,16 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import type { EmailItemProps } from '@/lib/utils';
 import ThreadDialog from './ThreadDialog';
+import { Badge } from '@/components/ui/badge';
 
-export default function EmailItem({ email }: EmailItemProps) {
+type EmailItemWithCbProps = EmailItemProps & {
+  onEmailUpdate?: (id: string, patch: Partial<EmailItemProps['email']>) => void;
+};
+
+export default function EmailItem({ email, onEmailUpdate }: EmailItemWithCbProps) {
   const [open, setOpen] = React.useState(false);
-  const router = useRouter();
 
   const formatDate = (dateString: string) => {
     const epoch = Number(email.date);
@@ -31,8 +34,20 @@ export default function EmailItem({ email }: EmailItemProps) {
     return from.split('@')[0];
   };
 
-  // เปิด dialog เมื่อคลิกการ์ด
   const handleOpen = () => setOpen(true);
+
+  // เลือกสี status แบบง่ายๆ
+  const renderStatus = () => {
+    if (!email.status) return null;
+    const lower = email.status.toLowerCase();
+    if (lower === 'sent') {
+      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Sent</Badge>;
+    }
+    if (lower === 'draft') {
+      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Draft</Badge>;
+    }
+    return <Badge variant="outline">{email.status}</Badge>;
+  };
 
   return (
     <>
@@ -52,7 +67,9 @@ export default function EmailItem({ email }: EmailItemProps) {
                 }`}
                 aria-hidden
               />
-              <span className="font-semibold text-foreground truncate">{extractName(email.from)}</span>
+              <span className="font-semibold text-foreground truncate">
+                {extractName(email.from)}
+              </span>
               <span className="text-sm text-muted-foreground truncate">
                 {extractEmail(email.from)}
               </span>
@@ -71,16 +88,21 @@ export default function EmailItem({ email }: EmailItemProps) {
             <p className="text-sm text-muted-foreground line-clamp-2">{email.snippet}</p>
           </div>
 
-          <div className="shrink-0 text-sm text-muted-foreground">{formatDate(email.date)}</div>
+          {/* ฝั่งขวา: วันที่ + status */}
+          <div className="shrink-0 flex flex-col items-end gap-2 text-sm text-muted-foreground">
+            <span>{formatDate(email.date)}</span>
+            {renderStatus()}
+          </div>
         </div>
       </div>
 
-      {/* Dialog แสดงทั้งเธรด (เมลหลัก = ตัวที่คลิก) */}
       <ThreadDialog
         open={open}
         onOpenChange={setOpen}
         threadId={email.threadId}
         mainId={email.id}
+        // 👇 ส่ง callback ลงไปให้ dialog เรียกตอน draft/send เสร็จ
+        onEmailUpdate={onEmailUpdate}
       />
     </>
   );
