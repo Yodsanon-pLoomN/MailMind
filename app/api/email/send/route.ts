@@ -80,28 +80,32 @@ export async function POST(req: Request) {
     const replySubject = `Re: ${cleanSubject}`
     const encodedSubject = encodeSubjectUtf8(replySubject)
 
-    // 🔹 5) เตรียม raw email (RFC 5322)
-    const lines = [
-      `To: ${origFrom}`,
-      `Subject: ${encodedSubject}`,
-      origMsgId ? `In-Reply-To: ${origMsgId}` : '',
-      origRefs
-        ? `References: ${origRefs} ${origMsgId ?? ''}`
-        : origMsgId
-        ? `References: ${origMsgId}`
-        : '',
-      'MIME-Version: 1.0',
-      'Content-Type: text/plain; charset="UTF-8"',
-      'Content-Transfer-Encoding: 7bit',
-      '',
-      finalReplyText,
-    ].filter(Boolean)
+   // 🔹 Encode body เป็น Base64 แยกต่างหาก
+const encodedBody = Buffer.from(finalReplyText, 'utf-8').toString('base64')
 
-    const raw = Buffer.from(lines.join('\r\n'), 'utf-8')
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '')
+// 🔹 ปรับ header ให้ตรงกับ body
+const lines = [
+  `To: ${origFrom}`,
+  `Subject: ${encodedSubject}`,
+  origMsgId ? `In-Reply-To: ${origMsgId}` : '',
+  origRefs
+    ? `References: ${origRefs} ${origMsgId ?? ''}`
+    : origMsgId
+    ? `References: ${origMsgId}`
+    : '',
+  'MIME-Version: 1.0',
+  'Content-Type: text/plain; charset="UTF-8"',
+  'Content-Transfer-Encoding: base64',
+  '',
+  encodedBody, // 👈 ใช้ข้อความที่เข้ารหัสแล้ว
+]
+
+const raw = Buffer.from(lines.join('\r\n'), 'utf-8')
+  .toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/, '')
+
 
     // 🔹 6) ส่งอีเมลเข้า thread เดิม
     await gmail.users.messages.send({

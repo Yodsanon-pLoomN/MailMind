@@ -7,8 +7,8 @@ import { auth } from '@/lib/auth';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MailMind - Secure Email Viewer',
-  description: 'View your Gmail messages securely with OAuth authentication',
+  title: 'MailMind',
+  description: 'AI-powered email assistant with Gmail and Google Calendar integration.',
 };
 
 export default async function RootLayout({

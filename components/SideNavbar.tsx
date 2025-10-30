@@ -5,6 +5,7 @@ import React from 'react';
 const items = [
   { label: 'Inbox', path: '/' },
   { label: 'Calendar', path: '/calendar' },
+  { label: 'AI Assistant', path: '/assistant' },
   { label: 'Settings', path: '/settings' },
 ];
 
@@ -52,9 +53,9 @@ export function SideNavbar() {
               ))}
 
               <div className="my-2" />
-              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition mt-10">
+              <Link className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition mt-10" href="/profile">
                 <span className="font-medium">Profile</span>
-              </button>
+              </Link>
             </nav>
           </div>
         </div>
