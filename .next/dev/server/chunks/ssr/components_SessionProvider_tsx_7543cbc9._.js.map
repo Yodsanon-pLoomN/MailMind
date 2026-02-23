@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/ROG/Documents/Dev/RM/mailmind/components/SessionProvider.tsx"],"sourcesContent":["'use client'\nimport { SessionProvider } from 'next-auth/react'\nexport default SessionProvider"],"names":[],"mappings":";;;;;;;;;AAAA;;uCAEe"}}]
-}
