@@ -1,7 +1,5 @@
 import { SideNavbar }  from "@/components/SideNavbar";
-import EmailList from "@/components/EmailList";
 import Navbar from "@/components/Navbar";
-import { redirect } from "next/navigation";
 import SettingsPanel from "@/components/Settings";
 import { mockUser } from "@/lib/mock";
 

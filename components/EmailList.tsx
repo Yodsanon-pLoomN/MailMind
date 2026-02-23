@@ -52,6 +52,7 @@ export default function EmailList() {
       setEmails(data.items);
       setPageToken(data.nextPageToken);
       setHasMore(data.hasMore);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching emails:', err);
