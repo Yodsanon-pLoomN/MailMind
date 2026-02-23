@@ -1,0 +1,42 @@
+{
+  "node": {
+    "001f3ce36653acb417105ba820a7946268ff84c7e7": {
+      "workers": {
+        "app/calendar/page": {
+          "moduleId": "[project]/.next-internal/server/app/calendar/page/actions.js { ACTIONS_MODULE0 => \"[project]/components/Navbar.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        },
+        "app/page": {
+          "moduleId": "[project]/.next-internal/server/app/page/actions.js { ACTIONS_MODULE0 => \"[project]/components/Navbar.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        },
+        "app/profile/page": {
+          "moduleId": "[project]/.next-internal/server/app/profile/page/actions.js { ACTIONS_MODULE0 => \"[project]/components/Navbar.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        },
+        "app/settings/page": {
+          "moduleId": "[project]/.next-internal/server/app/settings/page/actions.js { ACTIONS_MODULE0 => \"[project]/components/Navbar.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        }
+      },
+      "layer": {
+        "app/calendar/page": "rsc",
+        "app/page": "rsc",
+        "app/profile/page": "rsc",
+        "app/settings/page": "rsc"
+      },
+      "filename": "components/Navbar.tsx",
+      "exportedName": "$$RSC_SERVER_ACTION_0"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "Dl1an1RXk6LJvK57o/K9nYbG5vo6N6M7f4m++ftM8zE="
+}

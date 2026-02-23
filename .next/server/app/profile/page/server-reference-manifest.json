@@ -1,0 +1,20 @@
+{
+  "node": {
+    "00a3e13fddad83d270701d1ced7cfda7ed13475b75": {
+      "workers": {
+        "app/profile/page": {
+          "moduleId": 50831,
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        }
+      },
+      "layer": {
+        "app/profile/page": "rsc"
+      },
+      "exportedName": "$$RSC_SERVER_ACTION_0",
+      "filename": "components/Navbar.tsx"
+    }
+  },
+  "edge": {}
+}

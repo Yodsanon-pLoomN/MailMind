@@ -1,0 +1,20 @@
+{
+  "node": {
+    "001f3ce36653acb417105ba820a7946268ff84c7e7": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": "[project]/.next-internal/server/app/settings/page/actions.js { ACTIONS_MODULE0 => \"[project]/components/Navbar.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "components/Navbar.tsx"
+        }
+      },
+      "layer": {
+        "app/settings/page": "rsc"
+      },
+      "exportedName": "$$RSC_SERVER_ACTION_0",
+      "filename": "components/Navbar.tsx"
+    }
+  },
+  "edge": {}
+}
