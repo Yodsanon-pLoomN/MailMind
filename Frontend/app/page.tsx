@@ -1,13 +1,12 @@
 import { SideNavbar }  from "@/components/SideNavbar";
 import EmailList from "@/components/EmailList";
 import Navbar from "@/components/Navbar";
-import {mockUser} from "@/lib/mock";
 
 
 export default function Home() {
 
   return (<>
-    <Navbar user={mockUser} />
+    <Navbar/>
     <div className="mx-auto max-w-7xl px-4 py-6">
       
       <div className="md:flex md:gap-6 items-start space-y-6">

@@ -1,18 +1,27 @@
-// components/GmailProfileCard.tsx
 "use client";
 
 import * as React from "react";
 import Image from "next/image";
-import { NavbarProps } from "@/lib/utils";
 
-export default  function GmailProfileCard({ user }: NavbarProps) {
+// กำหนด Type ให้ตรงกับที่ Backend ของเราส่งมา
+export interface UserProfileProps {
+  user: {
+    name: string;
+    email: string;
+    picture?: string; // เปลี่ยนจาก image เป็น picture
+  } | null;
+}
+
+export default function GmailProfileCard({ user }: UserProfileProps) {
+  // ถ้ายังไม่มีข้อมูล user ให้ซ่อนไว้ก่อน หรือจะใส่เป็น Skeleton Loading ก็ได้ครับ
+  if (!user) return null; 
 
   return (
-    <div className="bg-white p-5 flex flex-col items-center text-center gap-3">
+    <div className="bg-white p-5 flex flex-col items-center text-center gap-3 rounded-xl shadow-sm border">
       {/* รูปภาพ */}
-      {user.image ? (
+      {user.picture ? (
         <Image
-          src={user.image}
+          src={user.picture}
           alt={user.name || "User"}
           width={80}
           height={80}
@@ -24,15 +33,15 @@ export default  function GmailProfileCard({ user }: NavbarProps) {
         </div>
       )}
 
-      {/* ชื่อ */}
-      <p className="text-base font-medium text-gray-900 mt-1">
-        {user.name || "Unnamed User"}
-      </p>
-
-      {/* อีเมล */}
-      <p className="text-sm text-gray-500">
-        {user.email || "No email connected"}
-      </p>
+      {/* ข้อมูล */}
+      <div>
+        <p className="text-base font-medium text-gray-900 mt-1">
+          {user.name || "Unnamed User"}
+        </p>
+        <p className="text-sm text-gray-500">
+          {user.email || "No email connected"}
+        </p>
+      </div>
     </div>
   );
 }
