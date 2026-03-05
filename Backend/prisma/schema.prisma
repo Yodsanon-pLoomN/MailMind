@@ -16,4 +16,46 @@ model User {
   refreshToken String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  setting UserSetting?
+  apiKeys ApiKey[]
+}
+
+// ตารางเก็บการตั้งค่าทั่วไป
+// ตารางเก็บการตั้งค่าทั่วไป (ส่งไป Frontend ได้)
+model UserSetting {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // การตั้งค่า AI
+  defaultModel String   @default("gemini")
+  theme        String   @default("light")
+  
+  // การตั้งค่า Working Hours & Preferences (เพิ่มใหม่)
+  startTime    String   @default("09:00")
+  endTime      String   @default("17:00")
+  workDays     String[] @default(["mon", "tue", "wed", "thu", "fri"]) // เก็บเป็น Array ของข้อความ
+  timezone     String   @default("asia-bangkok")
+  title        String   @default("mr")
+  tone         String   @default("formal")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ตารางเก็บ API Key
+model ApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String // เช่น "gemini", "openai", "anthropic"
+  encryptedKey String // คีย์ที่ถูกเข้ารหัสแล้ว
+  iv           String // ค่า Initial Vector สำหรับถอดรหัส
+  authTag      String // ค่ายืนยันความถูกต้อง (GCM Auth Tag)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // บังคับให้ 1 User มีคีย์ได้แค่ 1 อันต่อ 1 Provider
+  @@unique([userId, provider])
 }

@@ -7,39 +7,55 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/provider/AuthProvider' // ✅ นำเข้า auth
+import type { CalendarEvent } from '@/lib/type' // ✅ นำเข้า type
 
-type CalendarEvent = {
-  id: string
-  summary: string
-  start: string | null
-  end: string | null
-  location?: string
-  htmlLink?: string
-}
+export default function CalendarView() {
+  const { logout } = useAuth()
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 
-export default function FullCalendar() {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date())
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [events, setEvents] = React.useState<CalendarEvent[]>([])
   const [loading, setLoading] = React.useState(false)
 
-  // โหลด event จาก /api/calendar ตอน mount
+  // ✅ โหลด event จาก Backend แทน
   React.useEffect(() => {
+    let isMounted = true
+
     ;(async () => {
       try {
         setLoading(true)
-        const res = await fetch('/api/calendar', { cache: 'no-store' })
+        const token = localStorage.getItem('app_token')
+        
+        const res = await fetch(`${API_BASE}/api/calendar`, { 
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          cache: 'no-store' 
+        })
+
+        if (res.status === 401) {
+          logout()
+          return
+        }
+
         const data = await res.json()
-        if (res.ok) {
+        if (res.ok && isMounted) {
           setEvents(data.items || [])
-        } else {
+        } else if (isMounted) {
           console.warn('calendar error', data)
         }
+      } catch (err) {
+        console.error(err)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     })()
-  }, [])
+
+    return () => { isMounted = false }
+  }, [API_BASE, logout])
 
   const today = new Date()
 
@@ -51,10 +67,9 @@ export default function FullCalendar() {
     setSelectedDate(now)
   }
 
-  // สร้าง grid ของเดือนนี้
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(monthStart)
-  const weekStart = startOfWeek(monthStart, { weekStartsOn: 1 }) // จันทร์
+  const weekStart = startOfWeek(monthStart, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
 
   const rows: React.JSX.Element[] = []
@@ -79,20 +94,12 @@ export default function FullCalendar() {
           )}
         >
           <div className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                'text-sm',
-                isSameDay(day, today) && 'font-semibold text-primary'
-              )}
-            >
+            <span className={cn('text-sm', isSameDay(day, today) && 'font-semibold text-primary')}>
               {formattedDate}
             </span>
-            {hasEvent ? (
-              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-            ) : null}
+            {hasEvent ? <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden /> : null}
           </div>
 
-          {/* แสดงอีเวนต์ 1-2 อันแรกของวันนั้น */}
           <div className="flex flex-col gap-1">
             {events
               .filter((ev) => {
@@ -101,10 +108,7 @@ export default function FullCalendar() {
               })
               .slice(0, 2)
               .map((ev) => (
-                <div
-                  key={ev.id}
-                  className="truncate rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[10px] font-medium"
-                >
+                <div key={ev.id} className="truncate rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[10px] font-medium">
                   {ev.summary}
                 </div>
               ))}
@@ -113,15 +117,10 @@ export default function FullCalendar() {
       )
       day = addDays(day, 1)
     }
-    rows.push(
-      <div className="grid grid-cols-7" key={day.toISOString()}>
-        {days}
-      </div>
-    )
+    rows.push(<div className="grid grid-cols-7" key={day.toISOString()}>{days}</div>)
     days = []
   }
 
-  // events ของวันที่เลือก
   const selectedEvents = events.filter((ev) => {
     const d = ev.start ? new Date(ev.start) : ev.end ? new Date(ev.end) : null
     return d ? isSameDay(d, selectedDate) : false
@@ -130,10 +129,7 @@ export default function FullCalendar() {
   const fmtDateTime = (x: string | null) => {
     if (!x) return ''
     const d = new Date(x)
-    return d.toLocaleString('th-TH', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
+    return d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
   }
 
   return (
@@ -141,7 +137,6 @@ export default function FullCalendar() {
       {/* ซ้าย: calendar */}
       <Card className="p-4 lg:p-6">
         <div className="flex flex-col gap-4">
-          {/* header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold leading-tight">
@@ -149,47 +144,28 @@ export default function FullCalendar() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={prevMonth}>
-                ←
-              </Button>
-              <Button variant="outline" size="icon" onClick={nextMonth}>
-                →
-              </Button>
-              <Button onClick={goToday} variant="default">
-                Today
-              </Button>
+              <Button variant="outline" size="icon" onClick={prevMonth}>←</Button>
+              <Button variant="outline" size="icon" onClick={nextMonth}>→</Button>
+              <Button onClick={goToday} variant="default">Today</Button>
             </div>
           </div>
 
-          {/* weekday header */}
           <div className="grid grid-cols-7 text-center text-xs font-medium text-muted-foreground">
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div className="text-sky-600">Sat</div>
-            <div className="text-rose-600">Sun</div>
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div>
+            <div className="text-sky-600">Sat</div><div className="text-rose-600">Sun</div>
           </div>
 
-          {/* calendar grid */}
-          <div className="grid gap-0">
-            {rows}
-          </div>
+          <div className="grid gap-0">{rows}</div>
 
-          {loading && (
-            <p className="text-xs text-muted-foreground">กำลังโหลดเหตุการณ์จาก Google…</p>
-          )}
+          {loading && <p className="text-xs text-muted-foreground">กำลังโหลดเหตุการณ์จาก Google…</p>}
         </div>
       </Card>
 
-      {/* ขวา: event list ของวันนั้น */}
+      {/* ขวา: event list */}
       <Card className="p-4 lg:p-6 flex flex-col gap-4">
         <div>
           <p className="text-xs text-muted-foreground">Events on</p>
-          <h3 className="text-lg font-semibold">
-            {format(selectedDate, 'd MMMM yyyy', { locale: th })}
-          </h3>
+          <h3 className="text-lg font-semibold">{format(selectedDate, 'd MMMM yyyy', { locale: th })}</h3>
         </div>
         <Separator />
 
@@ -200,22 +176,13 @@ export default function FullCalendar() {
             {selectedEvents.map((ev) => (
               <div key={ev.id} className="rounded-lg border bg-muted/30 p-3 space-y-1">
                 <p className="font-medium text-sm">{ev.summary}</p>
-                <p className="text-xs text-muted-foreground">
-                  {fmtDateTime(ev.start)} – {fmtDateTime(ev.end)}
-                </p>
-                {ev.location ? (
-                  <p className="text-xs text-muted-foreground">📍 {ev.location}</p>
-                ) : null}
-                {ev.htmlLink ? (
-                  <a
-                    href={ev.htmlLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-primary hover:underline"
-                  >
+                <p className="text-xs text-muted-foreground">{fmtDateTime(ev.start)} – {fmtDateTime(ev.end)}</p>
+                {ev.location && <p className="text-xs text-muted-foreground">📍 {ev.location}</p>}
+                {ev.htmlLink && (
+                  <a href={ev.htmlLink} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
                     เปิดใน Google Calendar
                   </a>
-                ) : null}
+                )}
               </div>
             ))}
           </div>

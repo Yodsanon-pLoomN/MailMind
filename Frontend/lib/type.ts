@@ -37,3 +37,13 @@ export interface ThreadMessage {
   isRead: boolean;
   body?: string;
 }
+
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: string | null;
+  end: string | null;
+  location?: string;
+  htmlLink?: string;
+}
