@@ -30,9 +30,11 @@ export default function SettingsPanel() {
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState({ text: "", type: "" });
 
-  // State API Key
+  // State API Key และปุ่ม Test
   const [configuredKeys, setConfiguredKeys] = React.useState<Record<string, boolean>>({});
   const [apiKeyInput, setApiKeyInput] = React.useState("");
+  const [testingKey, setTestingKey] = React.useState(false);
+  const [testResult, setTestResult] = React.useState({ text: "", type: "" });
 
   // State การตั้งค่าทั้งหมด
   const [startTime, setStartTime] = React.useState("09:00");
@@ -42,10 +44,8 @@ export default function SettingsPanel() {
   const [title, setTitle] = React.useState("mr");
   const [aiProvider, setAiProvider] = React.useState("gemini");
   const [tone, setTone] = React.useState("formal");
-  // state test api
-  const [testingKey, setTestingKey] = React.useState(false);
-  const [testResult, setTestResult] = React.useState({ text: "", type: "" });
 
+  // โหลดข้อมูลครั้งแรก
   React.useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -83,7 +83,7 @@ export default function SettingsPanel() {
     fetchSettings();
   }, [API_BASE]);
 
-// ฟังก์ชันทดสอบ API Key
+  // ฟังก์ชันทดสอบ API Key
   const handleTestKey = async () => {
     if (!apiKeyInput.trim()) {
       setTestResult({ text: "กรุณากรอก API Key ก่อนทดสอบ", type: "error" });
@@ -106,27 +106,24 @@ export default function SettingsPanel() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "API Key ไม่ถูกต้อง");
+        throw new Error(errData.error || `API Key ของ ${aiProvider} ไม่ถูกต้อง`);
       }
 
       setTestResult({ text: "✅ API Key ใช้งานได้!", type: "success" });
-    } catch (error: Error | unknown) {
-      const errorMessage = error instanceof Error ? error.message : "API Key ไม่ถูกต้อง";
-      setTestResult({ text: `❌ ${errorMessage}`, type: "error" });
+    } catch (error: any) {
+      setTestResult({ text: `❌ ${error.message}`, type: "error" });
     } finally {
       setTestingKey(false);
     }
   };
 
-
+  // ฟังก์ชันบันทึก
   const handleSave = async () => {
     setSaving(true);
     setMessage({ text: "", type: "" });
-    
     try {
       const token = localStorage.getItem("app_token");
 
-      // 1. บันทึกการตั้งค่าทั้งหมด
       const settingRes = await fetch(`${API_BASE}/api/settings`, {
         method: "PUT",
         headers: {
@@ -144,12 +141,8 @@ export default function SettingsPanel() {
         }),
       });
 
-      // ✅ ดักจับ Error สำหรับการตั้งค่า
-      if (!settingRes.ok) {
-        throw new Error("เกิดข้อผิดพลาดในการบันทึกการตั้งค่าทั่วไป");
-      }
+      if (!settingRes.ok) throw new Error("เกิดข้อผิดพลาดในการบันทึกการตั้งค่าทั่วไป");
 
-      // 2. เซฟ API Key (ถ้ามีการพิมพ์ใหม่)
       if (apiKeyInput.trim() !== "") {
         const keyRes = await fetch(`${API_BASE}/api/settings/key`, {
           method: "POST",
@@ -160,26 +153,21 @@ export default function SettingsPanel() {
           body: JSON.stringify({ provider: aiProvider, apiKey: apiKeyInput.trim() }),
         });
 
-        // ✅ ดักจับ Error สำหรับ API Key 
         if (!keyRes.ok) {
-          const errorData = await keyRes.json().catch(() => ({}));
-          throw new Error(errorData.error || "เกิดข้อผิดพลาดในการบันทึก API Key");
+          const errData = await keyRes.json().catch(() => ({}));
+          throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึก API Key");
         }
 
-        // ถ้าผ่าน ค่อยอัปเดต UI ว่าเซฟแล้ว
         setConfiguredKeys((prev) => ({ ...prev, [aiProvider]: true }));
         setApiKeyInput(""); 
+        setTestResult({ text: "", type: "" });
       }
 
-      // ถ้าทุกอย่างผ่านฉลุย ค่อยขึ้นข้อความสีเขียว
       setMessage({ text: "บันทึกการตั้งค่าเรียบร้อยแล้ว", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-
-    } catch (error: Error | unknown) {
+    } catch (error: any) {
       console.error("Error saving:", error);
-      // ✅ นำข้อความ Error ไปโชว์บนหน้าเว็บ (ข้อความสีแดง)
-      const errorMessage = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการบันทึก";
-      setMessage({ text: errorMessage, type: "error" });
+      setMessage({ text: error.message || "เกิดข้อผิดพลาดในการบันทึก", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -291,7 +279,27 @@ export default function SettingsPanel() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* ส่วนรับค่า API Key (นำไปแทนที่ block เดิมใน section Generative AI) */}
+          <div className="space-y-2">
+            <Label htmlFor="aiProvider">Provider</Label>
+            <Select
+              value={aiProvider}
+              onValueChange={(v) => {
+                setAiProvider(v);
+                setApiKeyInput(""); // ล้างช่องกรอกเมื่อสลับค่าย
+                setTestResult({ text: "", type: "" }); // ✅ ล้างผลการทดสอบอันเก่าทิ้งด้วย
+              }}
+            >
+              <SelectTrigger id="aiProvider">
+                <SelectValue placeholder="เลือก AI" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                <SelectItem value="gemini">Google Gemini</SelectItem>
+                <SelectItem value="claude">Anthropic Claude</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="apiKey">API Key</Label>
@@ -302,7 +310,6 @@ export default function SettingsPanel() {
               )}
             </div>
             
-            {/* ✅ เพิ่มเลย์เอาต์ช่องกรอกคู่กับปุ่ม Test */}
             <div className="flex gap-2">
               <Input
                 id="apiKey"
@@ -311,7 +318,7 @@ export default function SettingsPanel() {
                 value={apiKeyInput}
                 onChange={(e) => {
                   setApiKeyInput(e.target.value);
-                  setTestResult({ text: "", type: "" }); // ล้างผลทดสอบเมื่อพิมพ์ใหม่
+                  setTestResult({ text: "", type: "" }); 
                 }}
                 className="font-mono text-sm"
               />
@@ -319,13 +326,13 @@ export default function SettingsPanel() {
                 type="button" 
                 variant="secondary" 
                 onClick={handleTestKey}
-                disabled={testingKey || !apiKeyInput.trim() || aiProvider !== 'gemini'} // ปิดปุ่มถ้าไม่ใช่ Gemini เพราะยังไม่ได้ทำค่ายอื่น
+                // ✅ ปลดล็อกเอาเงื่อนไข aiProvider !== 'gemini' ออก เพื่อให้เทสต์ได้ทุกค่าย
+                disabled={testingKey || !apiKeyInput.trim()} 
               >
                 {testingKey ? "Testing..." : "Test Key"}
               </Button>
             </div>
             
-            {/* แสดงผลการทดสอบคีย์ */}
             {testResult.text && (
               <p className={cn("text-xs font-medium", testResult.type === "success" ? "text-green-600" : "text-red-600")}>
                 {testResult.text}

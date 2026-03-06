@@ -47,3 +47,12 @@ export interface CalendarEvent {
   location?: string;
   htmlLink?: string;
 }
+
+export interface Draft {
+  id: string;
+  subject: string;
+  suggestedDate: string | null;
+  location: string | null;
+  draftReply: string;
+  createdAt: string;
+}

@@ -7,21 +7,22 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  googleId     String   @unique
-  email        String   @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   name         String?
   picture      String?
-  accessToken  String?
-  refreshToken String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  setting UserSetting?
-  apiKeys ApiKey[]
+  googleId     String?       @unique
+  accessToken  String?       @db.Text
+  refreshToken String?       @db.Text
+  setting      UserSetting?
+  apiKeys      ApiKey[]
+  
+  drafts       Draft[]       // 👈 แก้จาก aiDrafts เป็น drafts และใช้โมเดล Draft
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
-// ตารางเก็บการตั้งค่าทั่วไป
 // ตารางเก็บการตั้งค่าทั่วไป (ส่งไป Frontend ได้)
 model UserSetting {
   id           String   @id @default(cuid())
@@ -32,13 +33,16 @@ model UserSetting {
   defaultModel String   @default("gemini")
   theme        String   @default("light")
   
-  // การตั้งค่า Working Hours & Preferences (เพิ่มใหม่)
+  // การตั้งค่า Working Hours & Preferences
   startTime    String   @default("09:00")
   endTime      String   @default("17:00")
-  workDays     String[] @default(["mon", "tue", "wed", "thu", "fri"]) // เก็บเป็น Array ของข้อความ
+  workDays     String[] @default(["mon", "tue", "wed", "thu", "fri"])
   timezone     String   @default("asia-bangkok")
   title        String   @default("mr")
   tone         String   @default("formal")
+
+  // 👇 เติมบรรทัดนี้เข้าไปครับ สำคัญมากสำหรับระบบ Cron Job!
+  lastEmailSync DateTime? @default(now())
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -58,4 +62,24 @@ model ApiKey {
 
   // บังคับให้ 1 User มีคีย์ได้แค่ 1 อันต่อ 1 Provider
   @@unique([userId, provider])
+}
+
+
+model Draft {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  messageId     String    @unique
+  threadId      String
+  subject       String?
+  
+  suggestedDate DateTime?
+  location      String?
+  
+  draftReply    String    @db.Text
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

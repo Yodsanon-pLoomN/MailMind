@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
 const { encrypt } = require('../utils/encryption');
-
+const geminiService = require('../services/ai/gemini');
+const openaiService = require('../services/ai/openai');
+const claudeService = require('../services/ai/claude');
 // 1. ดึงการตั้งค่าทั้งหมด (และเช็คว่ามี Key ค่ายไหนบ้าง)
 exports.getSettings = async (req, res) => {
   try {
@@ -135,7 +137,7 @@ exports.deleteApiKey = async (req, res) => {
 };
 
 
-// 5. ทดสอบ API Key (แบบเช็คแค่สิทธิ์การเข้าถึง ไม่ต้องเดาชื่อ Model)
+// 5. ทดสอบ API Key
 exports.testApiKey = async (req, res) => {
   try {
     const { provider, apiKey } = req.body;
@@ -144,27 +146,22 @@ exports.testApiKey = async (req, res) => {
       return res.status(400).json({ error: 'กรุณาส่ง provider และ apiKey ให้ครบถ้วน' });
     }
 
+    // โยนคีย์ไปเทสต์ตามค่ายที่เลือก
     if (provider === 'gemini') {
-      // 🚀 เปลี่ยนมาใช้วิธี GET ขอดูรายชื่อแทน (ถ้าคีย์ถูก มันจะตอบกลับเป็นลิสต์รายชื่อทันที)
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || 'API Key ของ Gemini ไม่ถูกต้องหรือหมดอายุ');
-      }
-
-      return res.json({ message: '✅ API Key ของ Gemini ใช้งานได้ปกติ' });
-    } 
-    
-    // เผื่ออนาคตทำของค่ายอื่น
-    else if (provider === 'openai' || provider === 'claude') {
-      return res.status(501).json({ error: `ระบบทดสอบคีย์ของ ${provider} กำลังอยู่ในระหว่างการพัฒนา` });
+      await geminiService.testKey(apiKey);
+    } else if (provider === 'openai') {
+      await openaiService.testKey(apiKey);
+    } else if (provider === 'claude') {
+      await claudeService.testKey(apiKey);
+    } else {
+      return res.status(400).json({ error: 'ไม่รู้จัก Provider นี้' });
     }
 
-    return res.status(400).json({ error: 'ไม่รู้จัก Provider นี้' });
+    // ถ้าไม่ Error แสดงว่าผ่าน
+    return res.json({ message: `✅ API Key ของ ${provider.toUpperCase()} ใช้งานได้ปกติ` });
 
   } catch (error) {
-    console.error('Error testing API Key:', error);
+    console.error(`Error testing ${req.body.provider} API Key:`, error);
     res.status(400).json({ error: error.message || 'API Key ไม่ถูกต้อง' });
   }
 };
