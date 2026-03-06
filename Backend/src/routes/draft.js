@@ -14,7 +14,7 @@ const calendarService = require('../services/calendarService');
 router.get('/', verifyToken, async (req, res) => {
   try {
     const drafts = await prisma.draft.findMany({
-      where: { userId: req.user.id, status: 'PENDING' },
+      where: { userId: req.user.id },
       orderBy: { createdAt: 'desc' }
     });
     res.json(drafts);

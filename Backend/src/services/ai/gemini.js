@@ -47,31 +47,30 @@ exports.extractAppointment = async (apiKey, emailText) => {
 exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, tone = "formal") => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // หรือรุ่นที่คุณใช้
 
     const prompt = `
       You are a smart personal assistant. A user has received an email requesting an appointment.
       
       New Appointment Details:
       - Title: ${extractedData.title}
-      - Date: ${extractedData.date}
-      - Location: ${extractedData.location}
+      - Date: ${extractedData.date || "NOT SPECIFIED"}
+      - Location: ${extractedData.location || "NOT SPECIFIED"}
       
       Original Email:
       """
       ${emailText}
       """
 
-      During this requested time, your boss already has the following scheduled events in their calendar (if [], it means they are free):
+      Existing schedule around requested time:
       ${JSON.stringify(existingEvents)}
 
       Your tasks:
-      1. Check for time conflicts.
-      2. If there is a conflict, evaluate the priority of the new appointment vs existing ones.
-      3. Draft a reply email IN THAI LANGUAGE using a ${tone === 'formal' ? 'formal and polite' : 'casual and friendly'} tone.
+      1. If the "Date" is "NOT SPECIFIED", draft a reply IN THAI asking the sender to propose a specific date and time for the appointment.
+      2. If the "Date" is specified, check for time conflicts with existing schedule.
          - If accepting: Confirm the appointment time.
-         - If conflict but the new request is higher priority: Accept the new appointment.
-         - If conflict and the existing appointment is higher priority (or unavoidable): Politely decline and propose an alternative time.
+         - If conflict: Politely decline and propose an alternative time.
+      3. Draft the reply email IN THAI LANGUAGE using a ${tone === 'formal' ? 'formal and polite' : 'casual and friendly'} tone.
       
       Output ONLY a valid JSON object. Do not include markdown blocks.
       {

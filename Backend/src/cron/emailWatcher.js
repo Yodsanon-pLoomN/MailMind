@@ -5,7 +5,6 @@ const { oauth2Client } = require('../config/google');
 const geminiService = require('../services/ai/gemini');
 const { decrypt } = require('../utils/encryption');
 
-// ฟังก์ชันดึง Text ออกจาก Email
 const getEmailText = (payload) => {
   let text = '';
   if (!payload) return text;
@@ -24,21 +23,18 @@ const getEmailText = (payload) => {
   return text;
 };
 
-// ฟังก์ชันหลักสำหรับดึงอีเมล
 const checkNewEmails = async () => {
-  console.log("⏳ [CRON] Checking for new emails...");
+  console.log("[CRON] Checking for new emails...");
   try {
     const users = await prisma.user.findMany({
       where: { refreshToken: { not: null } },
       include: { setting: true, apiKeys: true }
     });
 
-    // ลูปเช็คทีละ User
     for (const user of users) {
-      try { // 🛡️ ใส่ try...catch ครอบระดับ User (ถ้าคนนี้ Error จะได้ไม่พากันพังทั้งระบบ)
+      try {
         if (!user.setting) continue;
 
-        // เซ็ต Token ของ User คนนี้เพื่อคุยกับ Google API
         oauth2Client.setCredentials({ 
           refresh_token: user.refreshToken, 
           access_token: user.accessToken 
@@ -46,11 +42,9 @@ const checkNewEmails = async () => {
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
         const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
         
-        // 🌟 ดึงเวลา Sync ล่าสุดจาก Database (ถ้าไม่มีให้ย้อนหลัง 1 ชั่วโมง)
         const lastSyncDate = user.setting.lastEmailSync || new Date(Date.now() - 60 * 60 * 1000);
         const lastSyncUnix = Math.floor(lastSyncDate.getTime() / 1000);
 
-        // 🌟 ค้นหาเฉพาะอีเมลที่เข้ามา "ใหม่กว่า" เวลาที่เคย Sync
         const res = await gmail.users.messages.list({ 
           userId: 'me', 
           q: `newer:${lastSyncUnix}`, 
@@ -59,7 +53,6 @@ const checkNewEmails = async () => {
         
         const messages = res.data.messages || [];
         
-        // ถ้าไม่มีเมลใหม่เลย ให้อัปเดตเวลา Sync เป็นปัจจุบัน แล้วข้ามไปคนต่อไปเลย
         if (messages.length === 0) {
           await prisma.userSetting.update({
             where: { userId: user.id },
@@ -68,14 +61,12 @@ const checkNewEmails = async () => {
           continue; 
         }
 
-        console.log(`\n📥 พบอีเมลใหม่ ${messages.length} ฉบับ ของ User: ${user.email}`);
+        console.log(`\n[INFO] Found ${messages.length} new emails for User: ${user.email}`);
 
-        // ลูปอ่านอีเมลแต่ละฉบับที่เพิ่งเข้ามาใหม่
         for (const msg of messages) {
-          // ด่านที่ 1: เช็คว่าเมลนี้เคยอ่านและดราฟต์ไว้หรือยัง (กันซ้ำ)
           const existingDraft = await prisma.draft.findUnique({ where: { messageId: msg.id } });
           if (existingDraft) {
-            console.log(`⏭️ เมล ID: ${msg.id} เคยดราฟต์ไปแล้ว ข้าม...`);
+            console.log(`[SKIP] Email ID: ${msg.id} already drafted. Skipping...`);
             continue;
           }
 
@@ -84,49 +75,57 @@ const checkNewEmails = async () => {
           const headers = mailDetail.data.payload.headers;
           const subject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || "No Subject";
           
-          console.log(`📧 ตรวจสอบเมลหัวข้อ: "${subject}"`);
+          console.log(`[EMAIL] Checking subject: "${subject}"`);
 
-          // ด่านที่ 2: กรองคำคีย์เวิร์ด
-          const keywords = ["นัด", "ประชุม", "meeting", "zoom", "เวลา", "วันที่", "appointment", "schedule", "ว่างไหม"];
+          const keywords = ["นัด", "ประชุม", "meeting", "zoom", "เวลา", "วันที่", "appointment", "schedule", "ว่างไหม", "เที่ยว"];
           const hasKeyword = keywords.some(kw => text.toLowerCase().includes(kw));
 
           if (hasKeyword) {
             const geminiKeyObj = user.apiKeys.find(k => k.provider === 'gemini');
             if (!geminiKeyObj) {
-              console.log(`❌ ผู้ใช้นี้ยังไม่ได้เซฟ API Key ของ Gemini ไว้`);
+              console.log(`[ERROR] User does not have a saved Gemini API Key`);
               continue;
             }
             
-            // ถอดรหัส API Key เพื่อเอาไปใช้งาน
             const realApiKey = decrypt(geminiKeyObj.encryptedKey, geminiKeyObj.iv, geminiKeyObj.authTag);
             
-            // 🤖 สเตป 1: ส่งให้ AI วิเคราะห์ว่าใช่นัดหมายไหม
+            // ส่งให้ AI วิเคราะห์
             const aiResult = await geminiService.extractAppointment(realApiKey, text);
+            console.log("[AI] Extraction Result:", aiResult);
             
-            if (aiResult.isAppointment && aiResult.date) {
-              console.log(`🎯 AI ยืนยันว่าใช่นัดหมาย! วันที่: ${aiResult.date}`);
+            // เช็คแค่ว่าเป็นนัดหมายก็พอ ไม่บังคับว่าต้องมี Date
+            if (aiResult.isAppointment) {
+              console.log(`[SUCCESS] Confirmed appointment request. Date: ${aiResult.date || 'Not specified'}`);
 
-              // 📅 สเตป 2: เช็คคิวปฏิทิน (+/- 2 ชั่วโมงจากเวลานัด)
-              const eventDate = new Date(aiResult.date);
-              const timeMin = new Date(eventDate.getTime() - 2 * 60 * 60 * 1000).toISOString();
-              const timeMax = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000).toISOString();
+              let existingEvents = [];
+              let eventDate = null;
 
-              const calRes = await calendar.events.list({
-                calendarId: 'primary', timeMin, timeMax, singleEvents: true, orderBy: 'startTime'
-              });
+              // เช็คปฏิทินเฉพาะตอนที่ AI หาวันที่เจอเท่านั้น
+              if (aiResult.date) {
+                eventDate = new Date(aiResult.date);
+                const timeMin = new Date(eventDate.getTime() - 2 * 60 * 60 * 1000).toISOString();
+                const timeMax = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000).toISOString();
 
-              const existingEvents = calRes.data.items.map(e => ({
-                summary: e.summary,
-                start: e.start.dateTime || e.start.date,
-                end: e.end.dateTime || e.end.date
-              }));
+                try {
+                  const calRes = await calendar.events.list({
+                    calendarId: 'primary', timeMin, timeMax, singleEvents: true, orderBy: 'startTime'
+                  });
 
-              // ✍️ สเตป 3: ส่งข้อมูลให้ AI ร่างข้อความตอบกลับ
+                  existingEvents = calRes.data.items.map(e => ({
+                    summary: e.summary,
+                    start: e.start.dateTime || e.start.date,
+                    end: e.end.dateTime || e.end.date
+                  }));
+                } catch (err) {
+                  console.error("[ERROR] Calendar Error:", err.message);
+                }
+              }
+
+              console.log(`[PROCESS] Generating draft reply...`);
               const draftResult = await geminiService.draftReplyWithCalendar(
                 realApiKey, text, aiResult, existingEvents, user.setting.tone || "formal"
               );
 
-              // 💾 สเตป 4: บันทึก Draft ลง Database
               if (draftResult.draftMessage) {
                 await prisma.draft.create({
                   data: {
@@ -134,43 +133,40 @@ const checkNewEmails = async () => {
                     messageId: msg.id,
                     threadId: mailDetail.data.threadId,
                     subject: subject,
-                    suggestedDate: eventDate,
+                    suggestedDate: eventDate, // ถ้าหาวันที่ไม่เจอ จะถูกบันทึกเป็น null ใน DB
                     location: aiResult.location,
                     draftReply: draftResult.draftMessage,
                     status: "PENDING"
                   }
                 });
-                console.log(`🎉 ดราฟต์เสร็จสมบูรณ์! บันทึกลงฐานข้อมูลแล้ว`);
+                console.log(`[SUCCESS] Draft saved to database successfully.`);
               }
             } else {
-               console.log(`ℹ️ AI บอกว่าไม่ใช่เมลนัดหมาย ข้าม...`);
+               console.log(`[INFO] AI determined it's not an appointment. Skipping...`);
             }
           } else {
-             console.log(`⏭️ ไม่มีคีย์เวิร์ดเกี่ยวกับการนัดหมาย ข้าม...`);
+             console.log(`[SKIP] No appointment keywords found. Skipping...`);
           }
-        } // สิ้นสุดลูป messages
+        } 
 
-        // 🌟 อัปเดตเวลาเช็คเมลล่าสุดของ User คนนี้เมื่อทำงานทุกอย่างเสร็จสิ้น
         await prisma.userSetting.update({
           where: { userId: user.id },
           data: { lastEmailSync: new Date() }
         });
 
       } catch (userError) {
-        // 🛡️ ถ้า User คนนี้มีปัญหา (เช่น Token หมดอายุ) ก็จะมาร่วงที่ตรงนี้ แต่คนอื่นยังทำงานต่อได้
-        console.error(`❌ เกิดข้อผิดพลาดกับ User ${user.email}:`, userError.message);
+        console.error(`[ERROR] User processing failed for ${user.email}:`, userError.message);
       }
-    } // สิ้นสุดลูป users
+    } 
 
   } catch (error) {
-    console.error("❌ [CRON] ระบบรวมขัดข้อง:", error);
+    console.error("[CRON ERROR] System failure:", error);
   }
 };
 
 const startCron = () => {
-  // รันทุกๆ 2 นาที (ปรับเปลี่ยนรอบเวลาได้ตามต้องการ)
-  cron.schedule('*/2 * * * *', checkNewEmails); 
-  console.log("🕰️ Email Watcher Cron Job started (Runs every 2 minutes)");
+  cron.schedule('*/10 * * * *', checkNewEmails); 
+  console.log("[SYSTEM] Email Watcher Cron Job started (Runs every 10 minute)");
 };
 
 module.exports = { startCron };

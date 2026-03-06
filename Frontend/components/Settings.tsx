@@ -110,8 +110,9 @@ export default function SettingsPanel() {
       }
 
       setTestResult({ text: "✅ API Key ใช้งานได้!", type: "success" });
-    } catch (error: any) {
-      setTestResult({ text: `❌ ${error.message}`, type: "error" });
+    } catch (error: Error | unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setTestResult({ text: `❌ ${errorMessage}`, type: "error" });
     } finally {
       setTestingKey(false);
     }
@@ -165,9 +166,10 @@ export default function SettingsPanel() {
 
       setMessage({ text: "บันทึกการตั้งค่าเรียบร้อยแล้ว", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error saving:", error);
-      setMessage({ text: error.message || "เกิดข้อผิดพลาดในการบันทึก", type: "error" });
+      const errorMessage = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการบันทึก";
+      setMessage({ text: errorMessage, type: "error" });
     } finally {
       setSaving(false);
     }
@@ -305,7 +307,7 @@ export default function SettingsPanel() {
               <Label htmlFor="apiKey">API Key</Label>
               {configuredKeys[aiProvider] && (
                 <span className="text-[10px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                  ✅ ตั้งค่าแล้ว
+                  ตั้งค่าแล้ว
                 </span>
               )}
             </div>
