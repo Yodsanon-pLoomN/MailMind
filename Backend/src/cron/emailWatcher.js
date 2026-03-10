@@ -165,8 +165,8 @@ const checkNewEmails = async () => {
 };
 
 const startCron = () => {
-  cron.schedule('*/10 * * * *', checkNewEmails); 
-  console.log("[SYSTEM] Email Watcher Cron Job started (Runs every 10 minute)");
+  cron.schedule('*/1 * * * *', checkNewEmails); 
+  console.log("[SYSTEM] Email Watcher Cron Job started (Runs every 1 minute)");
 };
 
 module.exports = { startCron };

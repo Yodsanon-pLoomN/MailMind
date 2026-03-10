@@ -1,72 +1,62 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// backend/src/services/ai/openrouter.js
+const { OpenAI } = require("openai");
 
-const MODEL_NAME = "gemini-2.5-flash"; 
-
+// 1. ฟังก์ชันสำหรับเทสต์ API Key (หน้า Settings)
 exports.testKey = async (apiKey) => {
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-    await model.generateContent("Reply OK");
-    return true;
+    // ใช้แพ็กเกจ OpenAI แต่ชี้ URL ไปที่ OpenRouter
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: apiKey,
+    });
+
+    const response = await openai.chat.completions.create({
+      model: "stepfun/step-3.5-flash:free", 
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    if (response && response.choices && response.choices.length > 0) {
+      return true;
+    }
+    throw new Error("Invalid response from OpenRouter");
+
   } catch (error) {
-    throw new Error(error.message || 'Invalid Gemini API Key');
+    console.error("OpenRouter Test Error:", error);
+    throw new Error(error.message || "Invalid OpenRouter API Key");
   }
 };
 
-exports.extractAppointment = async (apiKey, emailText) => {
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-    const prompt = `
-      You are an executive assistant. Read the following email and determine if it contains an appointment or scheduling request.
-      Email content:
-      """
-      ${emailText}
-      """
-      
-      Output ONLY a valid JSON object with the following structure. Do not include markdown code blocks (like \`\`\`json).
-      {
-        "isAppointment": boolean (true if it's an appointment request, false otherwise),
-        "title": string (short appointment title, null if none),
-        "date": string (ISO 8601 date and time, e.g., "2026-03-10T14:00:00+07:00", null if time is not clearly specified),
-        "location": string (location or meeting link, null if none)
-      }
-    `;
-
-    const result = await model.generateContent(prompt);
-    let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Gemini Extraction Error:", error);
-    return { isAppointment: false };
-  }
-};
-
+// 2. ฟังก์ชันสำหรับร่างอีเมล (ใช้ใน Cron Job emailWatcher.js)
 exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting) => {
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: apiKey,
+    });
 
-    // 1. จัดการคำสรรพนามและคำลงท้ายภาษาไทยตามเพศ
+    // จัดการคำสรรพนามและคำลงท้ายภาษาไทยตามเพศ
     let pronoun = "ฉัน";
     let politeParticle = "ครับ/ค่ะ";
+    
     if (userSetting?.gender === "MALE") {
-      pronoun = "ผม"; politeParticle = "ครับ";
+      pronoun = "ผม";
+      politeParticle = "ครับ";
     } else if (userSetting?.gender === "FEMALE") {
-      pronoun = "ดิฉัน"; politeParticle = "ค่ะ";
+      pronoun = "ดิฉัน";
+      politeParticle = "ค่ะ";
     }
 
-    // 2. จัดการลายเซ็นท้ายอีเมล
+    // จัดการลายเซ็นท้ายอีเมล
     const firstName = userSetting?.firstName || "";
     const lastName = userSetting?.lastName || "";
     const fullName = `${firstName} ${lastName}`.trim();
     const position = userSetting?.position ? `\n${userSetting.position}` : "";
     const signatureText = userSetting?.signature ? userSetting.signature : "ขอแสดงความนับถือ";
+    
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
     const prompt = `
-      You are a smart personal assistant drafting an email reply on behalf of the user.
+      You are an AI personal assistant drafting an email reply on behalf of the user.
       
       User Profile Context:
       - Pronoun to use for the user: ${pronoun}
@@ -104,11 +94,17 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
+    const response = await openai.chat.completions.create({
+      model: userSetting?.defaultModel || "stepfun/step-3.5-flash:free", 
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const textResult = response.choices[0].message.content;
+    const cleanText = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanText);
+
   } catch (error) {
-    console.error("Gemini Draft Error:", error);
+    console.error("AI Draft Error:", error);
     return { actionType: "PENDING", reasoning: "Error generating draft", draftMessage: "" };
   }
 };

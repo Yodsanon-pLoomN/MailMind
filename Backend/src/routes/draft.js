@@ -9,7 +9,7 @@ const { oauth2Client } = require('../config/google');
 // ✅ นำเข้า Service ที่แยกหมวดหมู่ชัดเจน
 const gmailService = require('../services/gmailService');
 const calendarService = require('../services/calendarService');
-
+const { addAttachmentsToDraft } = require('../controllers/draft');
 // ดึงรายการ Draft ที่รอดำเนินการ
 router.get('/', verifyToken, async (req, res) => {
   try {
@@ -81,5 +81,8 @@ router.post('/:id/send', verifyToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+router.post('/attachments', verifyToken, addAttachmentsToDraft);
 
 module.exports = router;

@@ -3,6 +3,8 @@ const { encrypt } = require('../utils/encryption');
 const geminiService = require('../services/ai/gemini');
 const openaiService = require('../services/ai/openai');
 const claudeService = require('../services/ai/claude');
+const openrouterService = require('../services/ai/openrouter'); // 👈 เพิ่มบรรทัดนี้
+
 // 1. ดึงการตั้งค่าทั้งหมด (และเช็คว่ามี Key ค่ายไหนบ้าง)
 exports.getSettings = async (req, res) => {
   try {
@@ -22,11 +24,11 @@ exports.getSettings = async (req, res) => {
     });
 
     // แปลงให้อยู่ในรูปแบบ { gemini: true, openai: false, claude: true }
-    // อิงตาม value ในหน้า Frontend UI ของคุณ
     const configuredKeys = {
       gemini: keys.some(k => k.provider === 'gemini'),
       openai: keys.some(k => k.provider === 'openai'),
       claude: keys.some(k => k.provider === 'claude'),
+      openrouter: keys.some(k => k.provider === 'openrouter'),
     };
 
     res.json({ setting, configuredKeys });
@@ -41,28 +43,40 @@ exports.updateSettings = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // รับค่าทุกอย่างมาจาก Frontend
+    // รับค่าทุกอย่างมาจาก Frontend (✨ เพิ่มฟิลด์ใหม่ทั้งหมดที่นี่)
     const { 
+      isAutoReplyActive, // สวิตช์เปิด-ปิด AI
       defaultModel, 
       theme, 
       startTime, 
       endTime, 
       workDays, 
       timezone, 
+      firstName,         // ข้อมูลส่วนตัวสำหรับ AI
+      lastName,
+      gender,
       title, 
+      position,
+      signature,
       tone 
     } = req.body;
 
     const setting = await prisma.userSetting.update({
       where: { userId },
       data: { 
+        isAutoReplyActive, // อัปเดตสถานะ Cron
         defaultModel, 
         theme, 
         startTime, 
         endTime, 
-        workDays, // Prisma รองรับการเซฟ Array of Strings อยู่แล้วถ้ากำหนดใน schema แบบ String[]
+        workDays, 
         timezone, 
+        firstName,         // อัปเดตข้อมูลส่วนตัว
+        lastName,
+        gender,
         title, 
+        position,
+        signature,
         tone 
       },
     });
@@ -74,7 +88,7 @@ exports.updateSettings = async (req, res) => {
   }
 };
 
-// 3. บันทึก/อัปเดต API Key (ผ่านการเข้ารหัสก่อนเซฟลง Database)
+// 3. บันทึก/อัปเดต API Key
 exports.saveApiKey = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -117,7 +131,7 @@ exports.saveApiKey = async (req, res) => {
   }
 };
 
-// 4. ลบ API Key (เผื่ออนาคตคุณอยากทำปุ่ม "ลบ Key" ในหน้า Frontend)
+// 4. ลบ API Key
 exports.deleteApiKey = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -131,11 +145,9 @@ exports.deleteApiKey = async (req, res) => {
 
     res.json({ message: `ลบ API Key ของ ${provider} สำเร็จ` });
   } catch (error) {
-    // ถ้า Delete แล้วหาไม่เจอ (Record to delete does not exist) เราจะไม่พ่น Error แค่บอกว่าไม่มี
     res.json({ message: 'ไม่มี API Key นี้ในระบบอยู่แล้ว' });
   }
 };
-
 
 // 5. ทดสอบ API Key
 exports.testApiKey = async (req, res) => {
@@ -146,22 +158,50 @@ exports.testApiKey = async (req, res) => {
       return res.status(400).json({ error: 'กรุณาส่ง provider และ apiKey ให้ครบถ้วน' });
     }
 
-    // โยนคีย์ไปเทสต์ตามค่ายที่เลือก
     if (provider === 'gemini') {
       await geminiService.testKey(apiKey);
     } else if (provider === 'openai') {
       await openaiService.testKey(apiKey);
     } else if (provider === 'claude') {
       await claudeService.testKey(apiKey);
+    } else if (provider === 'openrouter') {
+      await openrouterService.testKey(apiKey);
     } else {
       return res.status(400).json({ error: 'ไม่รู้จัก Provider นี้' });
     }
 
-    // ถ้าไม่ Error แสดงว่าผ่าน
     return res.json({ message: `✅ API Key ของ ${provider.toUpperCase()} ใช้งานได้ปกติ` });
 
   } catch (error) {
     console.error(`Error testing ${req.body.provider} API Key:`, error);
     res.status(400).json({ error: error.message || 'API Key ไม่ถูกต้อง' });
+  }
+};
+
+// 6. [เพิ่มใหม่] ฟังก์ชันสำหรับ Toggle สวิตช์เปิด-ปิด Cron Job โดยเฉพาะ
+// (เผื่อ Frontend อยากยิงเปลี่ยนแค่ค่าเดียวโดยไม่ต้องส่งข้อมูลมาทั้งฟอร์ม)
+exports.toggleCronActive = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { isAutoReplyActive } = req.body;
+
+    if (typeof isAutoReplyActive !== 'boolean') {
+      return res.status(400).json({ error: 'ค่า isAutoReplyActive ต้องเป็น Boolean' });
+    }
+
+    const setting = await prisma.userSetting.update({
+      where: { userId },
+      data: { isAutoReplyActive },
+      select: { isAutoReplyActive: true } // ดึงกลับไปแค่ค่าที่อัปเดต
+    });
+
+    res.json({ 
+      success: true, 
+      isAutoReplyActive: setting.isAutoReplyActive,
+      message: setting.isAutoReplyActive ? 'เปิดการทำงาน AI แล้ว' : 'หยุดการทำงาน AI ชั่วคราว'
+    });
+  } catch (error) {
+    console.error('Error toggling cron active state:', error);
+    res.status(500).json({ error: 'ไม่สามารถเปลี่ยนสถานะผู้ช่วย AI ได้' });
   }
 };
