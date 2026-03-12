@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { buildExtractionPrompt, buildDraftPrompt } = require('./prompts');
 
 const MODEL_NAME = "gemini-2.5-flash"; 
 
@@ -17,22 +18,8 @@ exports.extractAppointment = async (apiKey, emailText) => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-    const prompt = `
-      You are an executive assistant. Read the following email and determine if it contains an appointment or scheduling request.
-      Email content:
-      """
-      ${emailText}
-      """
-      
-      Output ONLY a valid JSON object with the following structure. Do not include markdown code blocks (like \`\`\`json).
-      {
-        "isAppointment": boolean (true if it's an appointment request, false otherwise),
-        "title": string (short appointment title, null if none),
-        "date": string (ISO 8601 date and time, e.g., "2026-03-10T14:00:00+07:00", null if time is not clearly specified),
-        "location": string (location or meeting link, null if none)
-      }
-    `;
+    const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
+    const prompt = buildExtractionPrompt(emailText, today);
 
     const result = await model.generateContent(prompt);
     let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
@@ -48,61 +35,17 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-    // 1. จัดการคำสรรพนามและคำลงท้ายภาษาไทยตามเพศ
-    let pronoun = "ฉัน";
-    let politeParticle = "ครับ/ค่ะ";
-    if (userSetting?.gender === "MALE") {
-      pronoun = "ผม"; politeParticle = "ครับ";
-    } else if (userSetting?.gender === "FEMALE") {
-      pronoun = "ดิฉัน"; politeParticle = "ค่ะ";
-    }
+    let pronoun = "ฉัน"; let politeParticle = "ครับ/ค่ะ";
+    if (userSetting?.gender === "MALE") { pronoun = "ผม"; politeParticle = "ครับ"; } 
+    else if (userSetting?.gender === "FEMALE") { pronoun = "ดิฉัน"; politeParticle = "ค่ะ"; }
 
-    // 2. จัดการลายเซ็นท้ายอีเมล
-    const firstName = userSetting?.firstName || "";
-    const lastName = userSetting?.lastName || "";
-    const fullName = `${firstName} ${lastName}`.trim();
+    const tone = userSetting?.tone === 'casual' ? 'casual and friendly' : 'formal and polite';
+    const fullName = `${userSetting?.firstName || ""} ${userSetting?.lastName || ""}`.trim();
     const position = userSetting?.position ? `\n${userSetting.position}` : "";
-    const signatureText = userSetting?.signature ? userSetting.signature : "ขอแสดงความนับถือ";
+    const signatureText = userSetting?.signature || "ขอแสดงความนับถือ";
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
-    const prompt = `
-      You are a smart personal assistant drafting an email reply on behalf of the user.
-      
-      User Profile Context:
-      - Pronoun to use for the user: ${pronoun}
-      - Polite particle to end sentences: ${politeParticle}
-      - Tone: ${userSetting?.tone === 'casual' ? 'casual and friendly' : 'formal and polite'}
-      
-      New Appointment Details:
-      - Title: ${extractedData.title}
-      - Date: ${extractedData.date || "NOT SPECIFIED"}
-      - Location: ${extractedData.location || "NOT SPECIFIED"}
-      
-      Original Email:
-      """
-      ${emailText}
-      """
-
-      Existing schedule around requested time:
-      ${JSON.stringify(existingEvents)}
-
-      Your tasks:
-      1. Check the date. If "NOT SPECIFIED", draft a reply asking for a specific date/time. Action Type: "RESCHEDULE".
-      2. If specified, check for time conflicts.
-         - If NO conflict: Confirm the appointment. Action Type: "ACCEPT".
-         - If conflict: Politely decline and propose an alternative time. Action Type: "RESCHEDULE".
-      3. Draft the email IN THAI. 
-      4. MUST use the pronoun "${pronoun}" and end sentences with "${politeParticle}".
-      5. MUST append the following exact signature at the end of the email:
-      ${fullSignature}
-      
-      Output ONLY a valid JSON object. Do not include markdown blocks.
-      {
-        "actionType": "string (ACCEPT or RESCHEDULE)",
-        "reasoning": "string (Your reasoning in Thai)",
-        "draftMessage": "string (The final email in Thai, including the signature)"
-      }
-    `;
+    const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature);
 
     const result = await model.generateContent(prompt);
     let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();

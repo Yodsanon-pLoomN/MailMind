@@ -15,7 +15,6 @@ import { Calendar, Send, Trash2, Paperclip, X, FileText, Image, File } from 'luc
 import MessageCard from './MessageCard'
 import type { ThreadMessage } from '@/lib/type'
 import type { Draft } from './DraftList'
-import { UploadButton } from '@/lib/uploadthing'
 import { cn } from '@/lib/utils'
 
 interface AttachmentFile {
@@ -169,42 +168,8 @@ export default function DraftDialog({
             <div className="sticky bottom-0 border-t bg-white p-6 space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-blue-700">AI Assistant Draft</span>
-                <UploadButton
-                  endpoint="emailAttachment"
-                  
-                  // ✅ Track upload begin/complete state
-                  onUploadBegin={() => setIsUploading(true)}
-                  onClientUploadComplete={(res) => {
-                    setIsUploading(false)
-                    if (res) {
-                      const newFiles: AttachmentFile[] = res.map(f => ({
-                        url: f.ufsUrl,
-                        name: f.name,
-                        size: f.size,
-                        type: f.type,
-                      }))
-                      setAttachments(prev => [...prev, ...newFiles])
-                    }
-                  }}
-                  onUploadError={(error: Error) => {
-                    setIsUploading(false)
-                    alert(`Upload failed: ${error.message}`)
-                  }}
-                  appearance={{
-                    button: cn(
-                      "bg-blue-50 text-blue-600 border border-blue-200 text-xs px-4 h-9",
-                      "hover:bg-blue-100 transition-all rounded-full font-medium shadow-none",
-                      isUploading && "opacity-50 cursor-not-allowed"
-                    ),
-                    allowedContent: "hidden",
-                  }}
-                  content={{
-                    button({ ready, isUploading: uploading }) {
-                      if (uploading) return <>⏳ กำลังอัปโหลด...</>
-                      return <><Paperclip className="w-3.5 h-3.5 mr-2" />{ready ? 'แนบไฟล์' : 'กำลังเตรียม...'}</>
-                    },
-                  }}
-                />
+                
+               
               </div>
 
               <Textarea

@@ -2,9 +2,11 @@ const cron = require('node-cron');
 const { google } = require('googleapis');
 const prisma = require('../config/prisma');
 const { oauth2Client } = require('../config/google');
-const geminiService = require('../services/ai/gemini');
+const geminiService = require('../services/ai/gemini'); // หรือเปลี่ยนเป็นค่ายอื่นตามที่ใช้
 const { decrypt } = require('../utils/encryption');
+const { APPOINTMENT_KEYWORDS } = require('../config/constants'); // 🌟 ดึงคำกรองจาก Dictionary
 
+// ฟังก์ชันแกะข้อความอีเมล
 const getEmailText = (payload) => {
   let text = '';
   if (!payload) return text;
@@ -34,6 +36,7 @@ const checkNewEmails = async () => {
     for (const user of users) {
       try {
         if (!user.setting) continue;
+        const userSetting = user.setting;
 
         oauth2Client.setCredentials({ 
           refresh_token: user.refreshToken, 
@@ -45,16 +48,18 @@ const checkNewEmails = async () => {
         const lastSyncDate = user.setting.lastEmailSync || new Date(Date.now() - 60 * 60 * 1000);
         const lastSyncUnix = Math.floor(lastSyncDate.getTime() / 1000);
 
+        // ดึงเฉพาะอีเมลที่ยังไม่ได้อ่าน และไม่ใช่ตัวเราส่งเอง
         const res = await gmail.users.messages.list({ 
           userId: 'me', 
-          q: `newer:${lastSyncUnix}`, 
+          q: `newer:${lastSyncUnix} is:unread -from:me`, 
           maxResults: 10 
         });
         
         const messages = res.data.messages || [];
         
         if (messages.length === 0) {
-          await prisma.userSetting.update({
+          // ✅ อัปเดตตาราง userSetting
+          await prisma.userSetting.update({ 
             where: { userId: user.id },
             data: { lastEmailSync: new Date() }
           });
@@ -71,14 +76,18 @@ const checkNewEmails = async () => {
           }
 
           const mailDetail = await gmail.users.messages.get({ userId: 'me', id: msg.id, format: 'full' });
-          const text = getEmailText(mailDetail.data.payload);
+          const latestText = getEmailText(mailDetail.data.payload);
           const headers = mailDetail.data.payload.headers;
-          const subject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || "No Subject";
-          
-          console.log(`[EMAIL] Checking subject: "${subject}"`);
+          const threadId = mailDetail.data.threadId;
 
-          const keywords = ["นัด", "ประชุม", "meeting", "zoom", "เวลา", "วันที่", "appointment", "schedule", "ว่างไหม", "เที่ยว"];
-          const hasKeyword = keywords.some(kw => text.toLowerCase().includes(kw));
+          // 🌟 จัดการล้างคำว่า "Re: " ที่ซ้อนกันใน Subject
+          let rawSubject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || "No Subject";
+          let cleanSubject = rawSubject.replace(/^(re:\s*)+/gi, '').trim(); 
+          
+          console.log(`[EMAIL] Checking subject: "${cleanSubject}"`);
+
+          // 🌟 เช็ค Keyword จาก Dictionary กลาง
+          const hasKeyword = APPOINTMENT_KEYWORDS.some(kw => latestText.toLowerCase().includes(kw));
 
           if (hasKeyword) {
             const geminiKeyObj = user.apiKeys.find(k => k.provider === 'gemini');
@@ -89,18 +98,32 @@ const checkNewEmails = async () => {
             
             const realApiKey = decrypt(geminiKeyObj.encryptedKey, geminiKeyObj.iv, geminiKeyObj.authTag);
             
-            // ส่งให้ AI วิเคราะห์
-            const aiResult = await geminiService.extractAppointment(realApiKey, text);
+            // 🌟 ดึงประวัติการคุยทั้ง Thread เพื่อสร้าง Context ให้ AI มีความจำ
+            console.log(`[INFO] Fetching thread context for threadId: ${threadId}`);
+            const threadDetail = await gmail.users.threads.get({ userId: 'me', id: threadId });
+            
+            let fullThreadText = "";
+            threadDetail.data.messages.forEach((tMsg) => {
+              const tText = getEmailText(tMsg.payload);
+              const tHeaders = tMsg.payload.headers;
+              const fromHeader = tHeaders.find(h => h.name.toLowerCase() === 'from')?.value || 'Unknown';
+              const dateHeader = tHeaders.find(h => h.name.toLowerCase() === 'date')?.value || '';
+              
+              fullThreadText += `\n--- Email From: ${fromHeader} | Date: ${dateHeader} ---\n${tText.trim()}\n`;
+            });
+
+            console.log(`[AI] Sending full thread context to AI...`);
+
+            // AI ประเมินการนัดหมายและ Priority
+            const aiResult = await geminiService.extractAppointment(realApiKey, fullThreadText);
             console.log("[AI] Extraction Result:", aiResult);
             
-            // เช็คแค่ว่าเป็นนัดหมายก็พอ ไม่บังคับว่าต้องมี Date
             if (aiResult.isAppointment) {
               console.log(`[SUCCESS] Confirmed appointment request. Date: ${aiResult.date || 'Not specified'}`);
 
               let existingEvents = [];
               let eventDate = null;
 
-              // เช็คปฏิทินเฉพาะตอนที่ AI หาวันที่เจอเท่านั้น
               if (aiResult.date) {
                 eventDate = new Date(aiResult.date);
                 const timeMin = new Date(eventDate.getTime() - 2 * 60 * 60 * 1000).toISOString();
@@ -122,8 +145,10 @@ const checkNewEmails = async () => {
               }
 
               console.log(`[PROCESS] Generating draft reply...`);
+              
+              // AI แต่งอีเมลและเช็คเวลาทำงาน
               const draftResult = await geminiService.draftReplyWithCalendar(
-                realApiKey, text, aiResult, existingEvents, user.setting.tone || "formal"
+                realApiKey, fullThreadText, aiResult, existingEvents, userSetting
               );
 
               if (draftResult.draftMessage) {
@@ -131,25 +156,31 @@ const checkNewEmails = async () => {
                   data: {
                     userId: user.id,
                     messageId: msg.id,
-                    threadId: mailDetail.data.threadId,
-                    subject: subject,
-                    suggestedDate: eventDate, // ถ้าหาวันที่ไม่เจอ จะถูกบันทึกเป็น null ใน DB
+                    threadId: threadId,
+                    subject: cleanSubject, // บันทึก Subject ที่สะอาดแล้ว
+                    
+                    // 🌟 ยอมบันทึกวันที่ลง Calendar ก็ต่อเมื่อ ระบุเวลาแล้ว + คิวว่าง (ACCEPT)
+                    suggestedDate: (aiResult.isTimeSpecified === true && draftResult.actionType === 'ACCEPT') ? eventDate : null,
                     location: aiResult.location,
                     draftReply: draftResult.draftMessage,
-                    status: "PENDING"
+                    status: "PENDING",
+                    
+                    // 🌟 บันทึก Priority ลง Database
+                    priority: aiResult.priority || "NORMAL"
                   }
                 });
-                console.log(`[SUCCESS] Draft saved to database successfully.`);
+                console.log(`[SUCCESS] Draft saved. Priority: ${aiResult.priority || "NORMAL"}`);
               }
             } else {
                console.log(`[INFO] AI determined it's not an appointment. Skipping...`);
             }
           } else {
-             console.log(`[SKIP] No appointment keywords found. Skipping...`);
+             console.log(`[SKIP] No appointment keywords found in the latest message. Skipping...`);
           }
         } 
 
-        await prisma.userSetting.update({
+        // ✅ อัปเดตตาราง userSetting ให้ถูกต้อง
+        await prisma.userSetting.update({ 
           where: { userId: user.id },
           data: { lastEmailSync: new Date() }
         });
