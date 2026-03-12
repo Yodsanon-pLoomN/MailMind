@@ -45,7 +45,13 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const signatureText = userSetting?.signature || "ขอแสดงความนับถือ";
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
-    const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature);
+    // 🌟 เพิ่ม Working Hours
+    const startWork = userSetting?.workStartTime || "09:00";
+    const endWork = userSetting?.workEndTime || "17:00";
+    const workDays = userSetting?.workDays || "วันจันทร์ ถึง วันศุกร์";
+    const workingHours = `${workDays}, เวลา ${startWork} น. - ${endWork} น.`;
+
+    const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature, workingHours);
 
     const result = await model.generateContent(prompt);
     let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();

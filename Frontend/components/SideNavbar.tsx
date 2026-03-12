@@ -4,7 +4,9 @@ import React from 'react';
 
 const items = [
   { label: 'Inbox', path: '/' },
+  { label: 'Drafts', path: '/draft' },
   { label: 'Calendar', path: '/calendar' },
+  { label: 'Summary', path: '/summary' },
   { label: 'Settings', path: '/settings' },
 ];
 

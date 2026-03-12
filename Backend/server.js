@@ -9,8 +9,8 @@ const threadRoutes = require('./src/routes/thread');
 const calendarRoutes = require('./src/routes/calendar');
 const settingRoutes = require('./src/routes/setting');
 const draftRoutes = require('./src/routes/draft');
+const summaryRoutes = require('./src/routes/summary');
 const { startCron } = require('./src/cron/emailWatcher');
-
 
 
 const app = express();
@@ -23,7 +23,7 @@ app.use('/api/threads', threadRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/drafts', draftRoutes);
-
+app.use('/api/summary', summaryRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend is running on port ${PORT}`);

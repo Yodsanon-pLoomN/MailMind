@@ -14,6 +14,7 @@ export interface Draft {
   draftReply: string;
   createdAt: string;
   status: string; // PENDING, APPROVED, REJECTED
+  priority?: string;
 }
 
 export default function DraftList() {

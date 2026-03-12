@@ -86,7 +86,14 @@ const checkNewEmails = async () => {
           
           console.log(`[EMAIL] Checking subject: "${cleanSubject}"`);
 
-          // 🌟 เช็ค Keyword จาก Dictionary กลาง
+          // 🛑 1. เพิ่มโค้ดบล็อกนี้: ดักจับอีเมลแจ้งเตือนจาก Calendar หรือระบบอัตโนมัติ
+          const isAutoReply = /รับคำเชิญ|ปฏิเสธคำเชิญ|accepted:|declined:|canceled:|invitation:|คำเชิญ:|ตอบรับแล้ว/i.test(cleanSubject);
+          if (isAutoReply) {
+              console.log(`[SKIP] Auto-generated calendar notification detected. Skipping...`);
+              continue; // สั่งข้ามอีเมลฉบับนี้ไปเลย
+          }
+
+          // 🌟 เช็ค Keyword จาก Dictionary กลาง (โค้ดเดิม)
           const hasKeyword = APPOINTMENT_KEYWORDS.some(kw => latestText.toLowerCase().includes(kw));
 
           if (hasKeyword) {

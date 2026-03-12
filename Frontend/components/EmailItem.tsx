@@ -2,8 +2,7 @@
 
 import * as React from 'react';
 import ThreadDialog from './ThreadDialog';
-import { Badge } from '@/components/ui/badge';
-import type { Email } from './EmailList'; // ✅ ดึง Type มาจากไฟล์ด้านบนให้ตรงกัน
+import type { Email } from './EmailList';
 
 type EmailItemWithCbProps = {
   email: Email;
@@ -13,7 +12,7 @@ type EmailItemWithCbProps = {
 export default function EmailItem({ email, onEmailUpdate }: EmailItemWithCbProps) {
   const [open, setOpen] = React.useState(false);
 
-  // ✅ ปรับปรุงการแปลงวันที่ให้ปลอดภัยและรองรับหลายฟอร์แมต
+  // ปรับปรุงการแปลงวันที่ให้ปลอดภัยและรองรับหลายฟอร์แมต
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const epoch = Number(dateString);
@@ -25,7 +24,7 @@ export default function EmailItem({ email, onEmailUpdate }: EmailItemWithCbProps
     }
   };
 
-  // ✅ ป้องกัน Error กรณี Header เมลไม่ได้ส่ง From มา
+  // ป้องกัน Error กรณี Header เมลไม่ได้ส่ง From มา
   const extractEmail = (from: string) => {
     if (!from) return 'Unknown';
     const match = from.match(/<(.+?)>/);
@@ -40,18 +39,6 @@ export default function EmailItem({ email, onEmailUpdate }: EmailItemWithCbProps
   };
 
   const handleOpen = () => setOpen(true);
-
-  const renderStatus = () => {
-    if (!email.status) return null;
-    const lower = email.status.toLowerCase();
-    if (lower === 'sent') {
-      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Sent</Badge>;
-    }
-    if (lower === 'draft') {
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Draft</Badge>;
-    }
-    return <Badge variant="outline">{email.status}</Badge>;
-  };
 
   return (
     <>
@@ -95,10 +82,9 @@ export default function EmailItem({ email, onEmailUpdate }: EmailItemWithCbProps
             </p>
           </div>
 
-          {/* ฝั่งขวา: วันที่ + status */}
+          {/* ฝั่งขวา: โชว์แค่วันที่อย่างเดียว */}
           <div className="shrink-0 flex flex-col items-end gap-2 text-sm text-gray-500">
             <span>{formatDate(email.date)}</span>
-            {renderStatus()}
           </div>
         </div>
       </div>

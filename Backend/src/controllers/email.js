@@ -85,3 +85,38 @@ exports.getEmails = async (req, res) => {
     res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงอีเมล' });
   }
 };
+
+exports.markAsRead = async (req, res) => {
+  try {
+    const { messageId } = req.body;
+    const userId = req.user.id; // ดึงจาก Auth Middleware
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.refreshToken) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    oauth2Client.setCredentials({
+      refresh_token: user.refreshToken,
+      access_token: user.accessToken,
+    });
+
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+    // สั่งลบ Label 'UNREAD' ออกจากอีเมลฉบับนี้
+    await gmail.users.messages.modify({
+      userId: 'me',
+      id: messageId,
+      requestBody: {
+        removeLabelIds: ['UNREAD']
+      }
+    });
+
+    console.log(`[INFO] Marked email ${messageId} as read.`);
+    res.json({ success: true, message: 'Marked as read' });
+
+  } catch (error) {
+    console.error('Error marking as read:', error);
+    res.status(500).json({ error: 'Failed to mark email as read' });
+  }
+};

@@ -94,6 +94,12 @@ exports.getThread = async (req, res) => {
     res.json({ items });
 
   } catch (error) {
+    // 🌟 ดักจับ Error 404 ตรงนี้ครับ!
+    if (error.code === 404 || error.status === 404) {
+      console.log(`[INFO] Thread ID ${req.params.threadId} not found in Gmail (Likely deleted).`);
+      return res.status(404).json({ error: 'ไม่พบข้อมูลอีเมลนี้ (อาจถูกลบไปแล้วในระบบ Gmail)' });
+    }
+
     console.error('Error fetching thread:', error);
     res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลอีเมล' });
   }

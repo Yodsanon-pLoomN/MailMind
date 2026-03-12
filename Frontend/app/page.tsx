@@ -16,7 +16,7 @@ export default function Home() {
         <main className="flex-1 drop-shadow-lg">
           <section className="bg-white rounded-lg shadow p-6 min-h-[70vh]">
             <h1 className="text-3xl font-bold mb-6">Inbox</h1>
-            <DraftList />
+            <EmailList />
           </section>
         </main>
       </div>
