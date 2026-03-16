@@ -55,7 +55,7 @@ export default function DraftList() {
 
   if (loading) return <div className="text-center py-12">กำลังโหลดรายการ...</div>;
   if (error) return <div className="text-red-600 text-center py-12">{error}</div>;
-  if (drafts.length === 0) return <div className="text-center py-12 text-gray-500">ไม่มีอีเมลรอการอนุมัติ AI จัดการทุกอย่างเรียบร้อยแล้ว</div>;
+  if (drafts.length === 0) return <div className="text-center py-12 text-gray-500">ไม่มีอีเมลรอการอนุมัติ</div>;
 
   return (
     <div className="space-y-3">

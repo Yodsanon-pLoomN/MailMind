@@ -1,47 +1,58 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/provider/AuthProvider'; // นำเข้า Hook ของเรา
+import { useAuth } from '@/provider/AuthProvider';
+import { ShieldAlert, X } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // เช็คว่าถ้ามี user ล็อกอินอยู่แล้ว ให้เตะกลับไปหน้าแรก (Home)
+  // State สำหรับควบคุมหน้าต่าง Terms of Use
+  const [showTerms, setShowTerms] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(false);
+
   useEffect(() => {
     if (user && !loading) {
-      router.replace('/');
+      router.replace('/setup');
     }
   }, [user, loading, router]);
 
-  // ฟังก์ชันกดปุ่มล็อกอิน
-  const handleLogin = () => {
-    // นำทางไปยัง Backend Express เพื่อให้ Google จัดการ OAuth
+  // ฟังก์ชันแสดงหน้าต่างข้อตกลง
+  const handleInitiateLogin = () => {
+    setShowTerms(true);
+  };
+
+  // ฟังก์ชันส่งไปล็อกอินจริงๆ
+  const handleProceedLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`;
   };
 
-  // ระหว่างที่ระบบกำลังเช็ค Token (ป้องกันหน้าจอกระพริบก่อน Redirect)
   if (loading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
-        <p className="text-gray-500 font-medium">กำลังตรวจสอบสถานะ...</p>
+        <p className="text-gray-500 font-medium animate-pulse">กำลังตรวจสอบสถานะ...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 p-4">
+      
+      {/* =========================================
+          หน้าต่าง Login หลัก (ดีไซน์เดิมของคุณ)
+      ========================================= */}
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 relative z-10">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">MailMind</h1>
-          <p className="text-gray-600">Secure email viewer with OAuth</p>
+          <p className="text-gray-600">ผู้ช่วย AI จัดการอีเมลและตารางงานของคุณ</p>
         </div>
 
         <div className="space-y-4">
-          {/* เอา <form> และ 'use server' ออก เปลี่ยนเป็นปุ่ม onClick ธรรมดา */}
           <button
-            onClick={handleLogin}
+            onClick={handleInitiateLogin}
             type="button"
             className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
           >
@@ -66,12 +77,113 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <div className="text-center text-sm text-gray-500 mt-6">
-            <p>By signing in, you agree to access your Gmail messages</p>
-            <p className="mt-1">in read-only mode through secure OAuth 2.0</p>
+          <div className="text-center text-xs text-slate-500 mt-6 pt-6 border-t border-slate-100">
+            <p>โดยการเข้าสู่ระบบ คุณยินยอมให้แอปพลิเคชันเข้าถึงข้อมูล Gmail</p>
+            <p className="mt-1">
+              และยอมรับ{' '}
+              <Link 
+                href="/terms" 
+                target="_blank" 
+                className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+              >
+                ข้อตกลงการใช้งาน (Terms of Use)
+              </Link>
+              {' '}ฉบับเต็ม
+            </p>
           </div>
         </div>
       </div>
+
+      {/*Modal ข้อตกลงการใช้งาน (Terms of Use)*/}
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2 text-slate-800">
+                <ShieldAlert className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-bold">ข้อตกลงการใช้งานและนโยบายความเป็นส่วนตัว</h2>
+              </div>
+              <button 
+                onClick={() => setShowTerms(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body (Scrollable Text) */}
+            <div className="px-6 py-6 overflow-y-auto flex-1 text-sm text-slate-600 space-y-4">
+              <p>ยินดีต้อนรับสู่ <strong>MailMind</strong> โปรดอ่านและทำความเข้าใจข้อตกลงต่อไปนี้ก่อนเข้าใช้งานระบบ:</p>
+              
+              <div className="space-y-3 pl-4 border-l-2 border-blue-100">
+                <div>
+                  <h3 className="font-semibold text-slate-800">1. การเข้าถึงข้อมูล (Data Access)</h3>
+                  <p className="mt-1">แอปพลิเคชันต้องการสิทธิ์การเข้าถึงแบบอ่านและเขียน (Read & Write) สำหรับ <strong>Gmail</strong> และ <strong>Google Calendar</strong> ของคุณ เพื่อใช้ในการแสดงผลเนื้อหาอีเมลและสร้างกิจกรรมลงปฏิทิน</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">2. การประมวลผลด้วย AI (AI Processing)</h3>
+                  <p className="mt-1">เนื้อหาอีเมลของคุณจะถูกส่งไปประมวลผลผ่าน API ของผู้ให้บริการ AI ที่คุณเลือก (เช่น Google Gemini, OpenAI, Anthropic หรือ IntelSphere) เพื่อทำการสรุปและร่างข้อความตอบกลับ ข้อมูลของคุณจะไม่ถูกนำไปใช้เพื่อฝึกสอน (Train) โมเดล AI ของระบบเรา</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">3. ความปลอดภัยของ API Key (API Key Security)</h3>
+                  <p className="mt-1">API Key ของผู้ให้บริการ AI ที่คุณกรอกลงในระบบ จะถูกเข้ารหัสความปลอดภัยระดับสูง (AES-256-GCM) ก่อนบันทึกลงฐานข้อมูล และจะไม่ถูกเปิดเผยต่อบุคคลที่สาม</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">4. การเพิกถอนสิทธิ์ (Revoking Access)</h3>
+                  <p className="mt-1">คุณสามารถยกเลิกการเชื่อมต่อและเพิกถอนสิทธิ์การเข้าถึงบัญชี Google ของคุณได้ตลอดเวลาผ่านหน้าการตั้งค่าความปลอดภัยของ Google Account</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-5 border-t border-slate-100 bg-slate-50 space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="mt-0.5 relative flex items-center justify-center">
+                  <input 
+                    type="checkbox" 
+                    className="peer sr-only"
+                    checked={isAgreed}
+                    onChange={(e) => setIsAgreed(e.target.checked)}
+                  />
+                  <div className="w-5 h-5 border-2 border-slate-300 rounded bg-white peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-colors flex items-center justify-center">
+                    {isAgreed && (
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-slate-700 select-none group-hover:text-slate-900">
+                  ฉันได้อ่านและยอมรับ <span className="font-semibold text-blue-600">ข้อตกลงการใช้งาน</span> และ <span className="font-semibold text-blue-600">นโยบายความเป็นส่วนตัว</span> ของ MailMind แล้ว
+                </span>
+              </label>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button 
+                  onClick={() => setShowTerms(false)}
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleProceedLogin}
+                  disabled={!isAgreed}
+                  className={`px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-all shadow-sm flex items-center gap-2 ${
+                    isAgreed 
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' 
+                      : 'bg-slate-300 cursor-not-allowed opacity-70'
+                  }`}
+                >
+                  ยินยอมและเข้าสู่ระบบ
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

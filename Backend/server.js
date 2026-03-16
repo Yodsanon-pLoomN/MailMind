@@ -2,14 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const authRoutes = require('./src/routes/auth');
-const userRoutes = require('./src/routes/user');
-const emailRoutes = require('./src/routes/email');
-const threadRoutes = require('./src/routes/thread');
-const calendarRoutes = require('./src/routes/calendar');
-const settingRoutes = require('./src/routes/setting');
-const draftRoutes = require('./src/routes/draft');
-const summaryRoutes = require('./src/routes/summary');
+const authRoutes = require('./src/routes/auth.route');
+const userRoutes = require('./src/routes/user.route');
+const emailRoutes = require('./src/routes/email.route');
+const calendarRoutes = require('./src/routes/calendar.route');
+const settingRoutes = require('./src/routes/setting.route');
+const draftRoutes = require('./src/routes/draft.route');
+const summaryRoutes = require('./src/routes/summary.route');
 const { startCron } = require('./src/cron/emailWatcher');
 
 
@@ -19,7 +18,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/emails', emailRoutes);
-app.use('/api/threads', threadRoutes);
+app.use('/api/threads', emailRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/drafts', draftRoutes);

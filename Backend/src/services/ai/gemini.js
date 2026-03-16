@@ -1,12 +1,10 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { buildExtractionPrompt, buildDraftPrompt } = require('./prompts');
 
-const MODEL_NAME = "gemini-2.5-flash"; 
-
-exports.testKey = async (apiKey) => {
+exports.testKey = async (apiKey, modelName) => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const model = genAI.getGenerativeModel({ model: modelName || "gemini-2.5-flash" });
     await model.generateContent("Reply OK");
     return true;
   } catch (error) {
@@ -14,10 +12,10 @@ exports.testKey = async (apiKey) => {
   }
 };
 
-exports.extractAppointment = async (apiKey, emailText) => {
+exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const model = genAI.getGenerativeModel({ model: modelName || "gemini-2.5-flash" });
     const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
@@ -30,10 +28,10 @@ exports.extractAppointment = async (apiKey, emailText) => {
   }
 };
 
-exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting) => {
+exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting, modelName) => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const model = genAI.getGenerativeModel({ model: modelName || "gemini-2.5-flash" });
 
     let pronoun = "ฉัน"; let politeParticle = "ครับ/ค่ะ";
     if (userSetting?.gender === "MALE") { pronoun = "ผม"; politeParticle = "ครับ"; } 
@@ -45,7 +43,6 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const signatureText = userSetting?.signature || "ขอแสดงความนับถือ";
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
-    // 🌟 เพิ่ม Working Hours
     const startWork = userSetting?.workStartTime || "09:00";
     const endWork = userSetting?.workEndTime || "17:00";
     const workDays = userSetting?.workDays || "วันจันทร์ ถึง วันศุกร์";

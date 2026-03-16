@@ -1,14 +1,13 @@
 "use client";
-
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SideNavbar } from "@/components/SideNavbar";
 import { useAuth } from "@/provider/AuthProvider";
-import DraftList from "@/components/DraftList";
+import EmailList from "@/components/EmailList";
 
 export default function DraftPage() {
   const { user, loading } = useAuth();
-  const router = useRouter();
+    const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,7 +27,7 @@ export default function DraftPage() {
           <main className="flex-1 drop-shadow-lg">
             <section className="bg-white rounded-lg shadow p-6 min-h-[70vh]">
               <h1 className="text-3xl font-bold mb-6">Drafts</h1>
-              <DraftList />
+              <EmailList />
             </section>
           </main>
         </div>

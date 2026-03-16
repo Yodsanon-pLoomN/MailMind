@@ -3,7 +3,7 @@ import Link from 'next/link'
 import React from 'react';
 
 const items = [
-  { label: 'Inbox', path: '/' },
+  { label: 'Inbox', path: '/inbox' },
   { label: 'Drafts', path: '/draft' },
   { label: 'Calendar', path: '/calendar' },
   { label: 'Summary', path: '/summary' },

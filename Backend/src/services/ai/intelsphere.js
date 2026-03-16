@@ -1,42 +1,43 @@
-const { OpenAI } = require("openai");
+const { OpenAI } = require('openai');
 const { buildExtractionPrompt, buildDraftPrompt } = require('./prompts');
 
 exports.testKey = async (apiKey, modelName) => {
   try {
-    const openai = new OpenAI({ baseURL: "[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)", apiKey });
+    const openai = new OpenAI({ baseURL: "https://gen.ai.kku.ac.th/api/v1", apiKey });
     const response = await openai.chat.completions.create({
-      model: modelName || "stepfun/step-3.5-flash:free", 
+      model: modelName || "gemini-2.5-flash-lite", // ใช้ตัวที่ส่งมา หรือตัวเริ่มต้น
       messages: [{ role: "user", content: "Reply OK" }],
     });
     if (response?.choices?.length > 0) return true;
-    throw new Error("Invalid response from OpenRouter");
+    throw new Error("Invalid response from IntelSphere");
   } catch (error) {
-    throw new Error(error.message || "Invalid OpenRouter API Key");
+    throw new Error(error.message || "Invalid IntelSphere API Key");
   }
 };
 
 exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
-    const openai = new OpenAI({ baseURL: "[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)", apiKey });
+    const openai = new OpenAI({ baseURL: "https://gen.ai.kku.ac.th/api/v1", apiKey });
     const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
     const response = await openai.chat.completions.create({
-      model: modelName || "stepfun/step-3.5-flash:free",
-      messages: [{ role: "user", content: prompt }] // OpenRouter บางโมเดลไม่รองรับ response_format json ตรงๆ
+      model: modelName || "gemini-2.5-flash-lite",
+      messages: [{ role: "user", content: prompt }]
     });
     
+    // เผื่อกรณี Model ส่ง ```json กลับมา
     const cleanText = response.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanText);
   } catch (error) {
-    console.error("OpenRouter Extraction Error:", error);
+    console.error("IntelSphere Extraction Error:", error);
     return { isAppointment: false };
   }
 };
 
 exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting, modelName) => {
   try {
-    const openai = new OpenAI({ baseURL: "[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)", apiKey });
+    const openai = new OpenAI({ baseURL: "https://gen.ai.kku.ac.th/api/v1", apiKey });
 
     let pronoun = "ฉัน"; let politeParticle = "ครับ/ค่ะ";
     if (userSetting?.gender === "MALE") { pronoun = "ผม"; politeParticle = "ครับ"; } 
@@ -56,14 +57,14 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature, workingHours);
 
     const response = await openai.chat.completions.create({
-      model: modelName || "stepfun/step-3.5-flash:free", 
+      model: modelName || "gemini-2.5-flash-lite",
       messages: [{ role: "user", content: prompt }]
     });
 
     const cleanText = response.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanText);
   } catch (error) {
-    console.error("OpenRouter Draft Error:", error);
+    console.error("IntelSphere Draft Error:", error);
     return { actionType: "PENDING", reasoning: "Error generating draft", draftMessage: "" };
   }
 };

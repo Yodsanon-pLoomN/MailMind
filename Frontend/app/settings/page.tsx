@@ -1,12 +1,23 @@
+"use client";
 import { SideNavbar }  from "@/components/SideNavbar";
-import Navbar from "@/components/Navbar";
 import SettingsPanel from "@/components/Settings";
-import { mockUser } from "@/lib/mock";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/provider/AuthProvider";
 
-export default async function Home() {
-
+export default  function Home() {
+    const { user, loading } = useAuth();
+    const router = useRouter();
+  
+    useEffect(() => {
+      if (!loading && !user) {
+        router.replace("/login");
+      }
+    }, [user, loading, router]);
+  
+    if (loading) return <div className="flex min-h-screen items-center justify-center">กำลังโหลด...</div>;
+    if (!user) return null;
   return (<>
-    <Navbar user={mockUser} />
     <div className="mx-auto max-w-7xl px-4 py-6">
       
       <div className="md:flex md:gap-6 items-start space-y-6">

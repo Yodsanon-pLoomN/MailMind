@@ -1,24 +1,28 @@
 const { OpenAI } = require('openai');
 const { buildExtractionPrompt, buildDraftPrompt } = require('./prompts');
 
-exports.testKey = async (apiKey) => {
+exports.testKey = async (apiKey, modelName) => {
   try {
     const openai = new OpenAI({ apiKey });
-    await openai.models.list(); 
+    // ทดสอบสร้างข้อความเพื่อเช็ค Model แทนการ List models เฉยๆ
+    await openai.chat.completions.create({
+      model: modelName || "gpt-4o-mini",
+      messages: [{ role: "user", content: "Reply OK" }]
+    });
     return true;
   } catch (error) {
     throw new Error(error.message || 'API Key ของ OpenAI ไม่ถูกต้อง');
   }
 };
 
-exports.extractAppointment = async (apiKey, emailText) => {
+exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
     const openai = new OpenAI({ apiKey });
     const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: modelName || "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" } 
     });
@@ -29,7 +33,7 @@ exports.extractAppointment = async (apiKey, emailText) => {
   }
 };
 
-exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting) => {
+exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting, modelName) => {
   try {
     const openai = new OpenAI({ apiKey });
 
@@ -43,7 +47,6 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const signatureText = userSetting?.signature || "ขอแสดงความนับถือ";
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
-    // 🌟 เพิ่ม Working Hours
     const startWork = userSetting?.workStartTime || "09:00";
     const endWork = userSetting?.workEndTime || "17:00";
     const workDays = userSetting?.workDays || "วันจันทร์ ถึง วันศุกร์";
@@ -52,7 +55,7 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature, workingHours);
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: modelName || "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" }
     });

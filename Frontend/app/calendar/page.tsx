@@ -1,19 +1,31 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SideNavbar } from "@/components/SideNavbar";
-import Navbar from "@/components/Navbar";
 import CalendarView from "@/components/CalendarView";
 import { useAuth } from "@/provider/AuthProvider";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center">กำลังโหลด...</div>;
-  if (!user) return null;
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-lg text-slate-500 font-medium animate-pulse">กำลังตรวจสอบสิทธิ์...</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="md:flex md:gap-6 items-start space-y-6">
           <SideNavbar />

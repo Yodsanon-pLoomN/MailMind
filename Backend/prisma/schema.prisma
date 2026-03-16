@@ -6,10 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// ==========================================
-// 🧑‍💻 USER MODELS
-// ==========================================
-
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -19,11 +15,10 @@ model User {
   accessToken  String?       @db.Text
   refreshToken String?       @db.Text
   
-  // Relations
   setting      UserSetting?
   apiKeys      ApiKey[]
-  drafts       Draft[]       // เชื่อมกับระบบร่างอีเมล
-  summaries    Summary[]     // [เพิ่มใหม่] เชื่อมกับระบบสรุปงาน (On-Demand Summary)
+  drafts       Draft[]     
+  summaries    Summary[]
   
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -34,24 +29,22 @@ model UserSetting {
   userId            String    @unique
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // ⚙️ การตั้งค่าระบบทั่วไป
-  isAutoReplyActive Boolean   @default(true)  // [เพิ่มใหม่] สวิตช์เปิด-ปิดการให้ AI ตอบเมลอัตโนมัติ
-  defaultModel      String    @default("gemini")
+  isAutoReplyActive Boolean   @default(true)
+  defaultProvider   String?
+  defaultModel      String?
   theme             String    @default("light")
   
-  // 🕒 การตั้งค่าเวลาทำงาน
   startTime         String    @default("09:00")
   endTime           String    @default("17:00")
   workDays          String[]  @default(["mon", "tue", "wed", "thu", "fri"])
   timezone          String    @default("asia-bangkok")
   
-  // 📝 ข้อมูลส่วนตัวสำหรับการร่างอีเมล (Personalized Prompt) [เพิ่มใหม่]
-  firstName         String?   // ชื่อจริง
-  lastName          String?   // นามสกุล
-  gender            String?   // เพศ (MALE, FEMALE) ไว้กำหนดสรรพนามและคำลงท้าย (ครับ/ค่ะ)
+  firstName         String?
+  lastName          String?
+  gender            String?
   title             String    @default("mr")
-  position          String?   // ตำแหน่งงาน (เช่น ผู้จัดการฝ่ายขาย)
-  signature         String?   // คำลงท้ายจดหมาย (เช่น "ขอแสดงความนับถือ")
+  position          String?
+  signature         String?
   tone              String    @default("formal")
   
   lastEmailSync     DateTime? @default(now())
@@ -64,20 +57,16 @@ model ApiKey {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider     String   // เช่น "gemini", "openai", "openrouter"
-  encryptedKey String   // คีย์ที่ถูกเข้ารหัสแล้ว
-  iv           String   // ค่า Initial Vector สำหรับถอดรหัส
-  authTag      String   // ค่ายืนยันความถูกต้อง (GCM Auth Tag)
+  provider     String 
+  encryptedKey String
+  iv           String
+  authTag      String
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([userId, provider])
 }
-
-// ==========================================
-// 📧 EMAIL & AI DRAFT MODELS
-// ==========================================
 
 model Draft {
   id            String       @id @default(cuid())
@@ -88,60 +77,36 @@ model Draft {
   threadId      String
   subject       String?
   
-  // ข้อมูลการนัดหมายที่ AI สกัดออกมา
   suggestedDate DateTime?
   location      String?
   
-  // 🧠 ข้อมูลการวิเคราะห์จาก AI [เพิ่มใหม่]
   actionType    String?      // สถานะการนัดหมาย: "ACCEPT" (ลงปฏิทิน) หรือ "RESCHEDULE" (ขอเลื่อน/ห้ามลงปฏิทิน)
   priority      String       @default("NORMAL") // ลำดับความสำคัญ: "HIGH", "NORMAL", "LOW"
   
   draftReply    String       @db.Text
   status        String       @default("PENDING") // สถานะผู้ใช้ตรวจสอบ: PENDING, APPROVED, REJECTED
   
-  // Relations
-  attachments   Attachment[] // [เพิ่มใหม่] เชื่อมกับระบบแนบไฟล์
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
 
-// 📎 ตารางเก็บไฟล์แนบ (Uploadthing) [เพิ่มใหม่]
-model Attachment {
-  id        String   @id @default(cuid())
-  draftId   String   
-  draft     Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  
-  fileName  String   // ชื่อไฟล์ เช่น "report.pdf"
-  fileType  String   // ชนิดของไฟล์ เช่น "application/pdf"
-  fileSize  Int      // ขนาดไฟล์ (Byte)
-  fileUrl   String   // ลิงก์จาก Uploadthing
-  
-  createdAt DateTime @default(now())
-}
-
-// ==========================================
-// 📊 SUMMARY MODELS
-// ==========================================
-
-// ประเภทของรายงานสรุป
 enum SummaryType {
   DAILY
   WEEKLY
   MONTHLY
 }
 
-// 📋 ตารางเก็บรายงานสรุปงาน (On-Demand Summary) [เพิ่มใหม่]
 model Summary {
   id          String      @id @default(cuid())
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   type        SummaryType // รายวัน, สัปดาห์, เดือน
-  periodStart DateTime    // ข้อมูลเริ่มต้นของรอบเวลานี้
-  periodEnd   DateTime    // ข้อมูลสิ้นสุดของรอบเวลานี้
+  periodStart DateTime
+  periodEnd   DateTime
   
-  content     String      @db.Text // เนื้อหา Markdown ที่ AI สรุปมาให้
+  content     String      @db.Text
   
   createdAt   DateTime    @default(now())
 

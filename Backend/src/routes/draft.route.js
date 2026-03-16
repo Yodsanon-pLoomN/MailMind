@@ -8,7 +8,7 @@ const {
   generateDraftOnDemand, 
   rejectDraft,
   approveAndSendDraft 
-} = require('../controllers/draft');
+} = require('../controllers/draft.controller');
 
 // ดึงรายการ Draft ที่รอดำเนินการ
 router.get('/', verifyToken, getDrafts);

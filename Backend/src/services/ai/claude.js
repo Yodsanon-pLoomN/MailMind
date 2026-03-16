@@ -1,11 +1,11 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { buildExtractionPrompt, buildDraftPrompt } = require('./prompts');
 
-exports.testKey = async (apiKey) => {
+exports.testKey = async (apiKey, modelName) => {
   try {
     const anthropic = new Anthropic({ apiKey });
     await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: modelName || 'claude-3-haiku-20240307',
       max_tokens: 5,
       messages: [{ role: 'user', content: 'Reply OK' }]
     });
@@ -15,14 +15,14 @@ exports.testKey = async (apiKey) => {
   }
 };
 
-exports.extractAppointment = async (apiKey, emailText) => {
+exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
     const anthropic = new Anthropic({ apiKey });
     const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: modelName || 'claude-3-haiku-20240307',
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -35,7 +35,7 @@ exports.extractAppointment = async (apiKey, emailText) => {
   }
 };
 
-exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting) => {
+exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existingEvents, userSetting, modelName) => {
   try {
     const anthropic = new Anthropic({ apiKey });
 
@@ -49,7 +49,6 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const signatureText = userSetting?.signature || "ขอแสดงความนับถือ";
     const fullSignature = `\n\n${signatureText}\n${fullName}${position}`;
 
-    // 🌟 เพิ่ม Working Hours
     const startWork = userSetting?.workStartTime || "09:00";
     const endWork = userSetting?.workEndTime || "17:00";
     const workDays = userSetting?.workDays || "วันจันทร์ ถึง วันศุกร์";
@@ -58,7 +57,7 @@ exports.draftReplyWithCalendar = async (apiKey, emailText, extractedData, existi
     const prompt = buildDraftPrompt(pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature, workingHours);
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: modelName || 'claude-3-haiku-20240307',
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }]
     });

@@ -2,9 +2,10 @@ const cron = require('node-cron');
 const { google } = require('googleapis');
 const prisma = require('../config/prisma');
 const { oauth2Client } = require('../config/google');
-const geminiService = require('../services/ai/gemini'); // หรือเปลี่ยนเป็นค่ายอื่นตามที่ใช้
+const geminiService = require('../services/ai/gemini'); 
+const notificationService = require('../services/notification.service'); // 🌟 นำเข้า Notification Service
 const { decrypt } = require('../utils/encryption');
-const { APPOINTMENT_KEYWORDS } = require('../config/constants'); // 🌟 ดึงคำกรองจาก Dictionary
+const { APPOINTMENT_KEYWORDS } = require('../config/constants'); 
 
 // ฟังก์ชันแกะข้อความอีเมล
 const getEmailText = (payload) => {
@@ -58,7 +59,6 @@ const checkNewEmails = async () => {
         const messages = res.data.messages || [];
         
         if (messages.length === 0) {
-          // ✅ อัปเดตตาราง userSetting
           await prisma.userSetting.update({ 
             where: { userId: user.id },
             data: { lastEmailSync: new Date() }
@@ -80,20 +80,21 @@ const checkNewEmails = async () => {
           const headers = mailDetail.data.payload.headers;
           const threadId = mailDetail.data.threadId;
 
-          // 🌟 จัดการล้างคำว่า "Re: " ที่ซ้อนกันใน Subject
+          // จัดการล้างคำว่า "Re: " ที่ซ้อนกันใน Subject
           let rawSubject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || "No Subject";
           let cleanSubject = rawSubject.replace(/^(re:\s*)+/gi, '').trim(); 
+          let msgFrom = headers.find(h => h.name.toLowerCase() === 'from')?.value || 'Unknown';
           
           console.log(`[EMAIL] Checking subject: "${cleanSubject}"`);
 
-          // 🛑 1. เพิ่มโค้ดบล็อกนี้: ดักจับอีเมลแจ้งเตือนจาก Calendar หรือระบบอัตโนมัติ
+          // ดักจับอีเมลแจ้งเตือนจาก Calendar หรือระบบอัตโนมัติ
           const isAutoReply = /รับคำเชิญ|ปฏิเสธคำเชิญ|accepted:|declined:|canceled:|invitation:|คำเชิญ:|ตอบรับแล้ว/i.test(cleanSubject);
           if (isAutoReply) {
               console.log(`[SKIP] Auto-generated calendar notification detected. Skipping...`);
-              continue; // สั่งข้ามอีเมลฉบับนี้ไปเลย
+              continue; 
           }
 
-          // 🌟 เช็ค Keyword จาก Dictionary กลาง (โค้ดเดิม)
+          // เช็ค Keyword จาก Dictionary กลาง
           const hasKeyword = APPOINTMENT_KEYWORDS.some(kw => latestText.toLowerCase().includes(kw));
 
           if (hasKeyword) {
@@ -105,7 +106,7 @@ const checkNewEmails = async () => {
             
             const realApiKey = decrypt(geminiKeyObj.encryptedKey, geminiKeyObj.iv, geminiKeyObj.authTag);
             
-            // 🌟 ดึงประวัติการคุยทั้ง Thread เพื่อสร้าง Context ให้ AI มีความจำ
+            // ดึงประวัติการคุยทั้ง Thread
             console.log(`[INFO] Fetching thread context for threadId: ${threadId}`);
             const threadDetail = await gmail.users.threads.get({ userId: 'me', id: threadId });
             
@@ -159,24 +160,37 @@ const checkNewEmails = async () => {
               );
 
               if (draftResult.draftMessage) {
+                const finalSuggestedDate = (aiResult.isTimeSpecified === true && draftResult.actionType === 'ACCEPT') ? eventDate : null;
+
+                // บันทึก Draft ลง Database
                 await prisma.draft.create({
                   data: {
                     userId: user.id,
                     messageId: msg.id,
                     threadId: threadId,
-                    subject: cleanSubject, // บันทึก Subject ที่สะอาดแล้ว
-                    
-                    // 🌟 ยอมบันทึกวันที่ลง Calendar ก็ต่อเมื่อ ระบุเวลาแล้ว + คิวว่าง (ACCEPT)
-                    suggestedDate: (aiResult.isTimeSpecified === true && draftResult.actionType === 'ACCEPT') ? eventDate : null,
+                    subject: cleanSubject,
+                    suggestedDate: finalSuggestedDate,
                     location: aiResult.location,
                     draftReply: draftResult.draftMessage,
                     status: "PENDING",
-                    
-                    // 🌟 บันทึก Priority ลง Database
                     priority: aiResult.priority || "NORMAL"
                   }
                 });
                 console.log(`[SUCCESS] Draft saved. Priority: ${aiResult.priority || "NORMAL"}`);
+
+                try {
+                  await notificationService.sendPendingDraftNotification(
+                    oauth2Client, 
+                    user.email, 
+                    {
+                      from: msgFrom, 
+                      subject: cleanSubject
+                    },
+                    finalSuggestedDate
+                  );
+                } catch (notiErr) {
+                  console.error(`[ERROR] Failed to send notification email:`, notiErr.message);
+                }
               }
             } else {
                console.log(`[INFO] AI determined it's not an appointment. Skipping...`);
@@ -186,7 +200,7 @@ const checkNewEmails = async () => {
           }
         } 
 
-        // ✅ อัปเดตตาราง userSetting ให้ถูกต้อง
+        // อัปเดตตาราง userSetting 
         await prisma.userSetting.update({ 
           where: { userId: user.id },
           data: { lastEmailSync: new Date() }
@@ -203,8 +217,8 @@ const checkNewEmails = async () => {
 };
 
 const startCron = () => {
-  cron.schedule('*/1 * * * *', checkNewEmails); 
-  console.log("[SYSTEM] Email Watcher Cron Job started (Runs every 1 minute)");
+  cron.schedule('*/5 * * * *', checkNewEmails); 
+  console.log("[SYSTEM] Email Watcher Cron Job started (Runs every 5 minutes)");
 };
 
 module.exports = { startCron };
