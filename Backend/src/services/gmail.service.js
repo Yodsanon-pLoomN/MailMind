@@ -240,3 +240,55 @@ exports.sendEmailReply = async (gmail, draft, metadata, editedReply) => {
     requestBody: { raw: encodedEmail, threadId: draft.threadId }
   });
 };
+
+exports.sendDirectReply = async (userId, threadId, messageId, replyText) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  
+  if (!user || !user.refreshToken) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  oauth2Client.setCredentials({
+    refresh_token: user.refreshToken,
+    access_token: user.accessToken,
+  });
+
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+  // 1. ดึง Metadata จากอีเมลต้นฉบับที่เราต้องการตอบกลับ
+  const metadata = await exports.getOriginalEmailMetadata(gmail, messageId);
+
+  // 2. เตรียมข้อมูลหัวข้อ (Subject)
+  const replySubject = metadata.subject.toLowerCase().startsWith('re:') 
+    ? metadata.subject 
+    : `Re: ${metadata.subject}`;
+
+  // 3. จัด Format อีเมล
+  const emailLines = [
+    `To: ${metadata.fromEmail}`,
+    `Subject: =?utf-8?B?${Buffer.from(replySubject).toString('base64')}?=`,
+    `In-Reply-To: ${metadata.originalMessageId}`,
+    `References: ${metadata.originalReferences} ${metadata.originalMessageId}`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    ``,
+    replyText
+  ];
+
+  const rawEmail = emailLines.join('\n');
+  const encodedEmail = Buffer.from(rawEmail)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  // 4. สั่งส่งอีเมล โดยระบุ threadId เดิมเพื่อให้ไปต่อท้ายในกระทู้เดียวกัน
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { 
+      raw: encodedEmail, 
+      threadId: threadId 
+    }
+  });
+
+  return true;
+};
