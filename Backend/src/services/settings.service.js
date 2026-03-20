@@ -93,9 +93,13 @@ exports.testProviderApiKey = async (provider, apiKey, modelName) => {
 };
 
 exports.toggleAiStatus = async (userId, isAutoReplyActive) => {
-  const setting = await prisma.userSetting.update({
+  const setting = await prisma.userSetting.upsert({
     where: { userId },
-    data: { isAutoReplyActive },
+    update: { isAutoReplyActive },
+    create: { 
+      userId,
+      isAutoReplyActive 
+    },
     select: { isAutoReplyActive: true }
   });
   return setting;
