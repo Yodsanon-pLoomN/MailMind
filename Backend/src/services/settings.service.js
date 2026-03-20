@@ -9,14 +9,12 @@ const openrouterService = require('./ai/openrouter');
 const intelsphereService = require('./ai/intelsphere');
 
 exports.getUserSettings = async (userId) => {
-  // หา Setting ถ้าไม่มีให้สร้างใหม่ (upsert)
   const setting = await prisma.userSetting.upsert({
     where: { userId },
     update: {},
     create: { userId },
   });
 
-  // หา API Keys ว่ามีของค่ายไหนบ้าง
   const keys = await prisma.apiKey.findMany({
     where: { userId },
     select: { provider: true },
@@ -34,9 +32,13 @@ exports.getUserSettings = async (userId) => {
 };
 
 exports.updateUserSettings = async (userId, data) => {
-  return await prisma.userSetting.update({
+  return await prisma.userSetting.upsert({
     where: { userId },
-    data, // โยนข้อมูลที่รับมาอัปเดตตรงๆ
+    update: data,
+    create: {
+      userId,
+      ...data
+    },
   });
 };
 
@@ -91,9 +93,13 @@ exports.testProviderApiKey = async (provider, apiKey, modelName) => {
 };
 
 exports.toggleAiStatus = async (userId, isAutoReplyActive) => {
-  const setting = await prisma.userSetting.update({
+  const setting = await prisma.userSetting.upsert({
     where: { userId },
-    data: { isAutoReplyActive },
+    update: { isAutoReplyActive },
+    create: { 
+      userId,
+      isAutoReplyActive 
+    },
     select: { isAutoReplyActive: true }
   });
   return setting;
