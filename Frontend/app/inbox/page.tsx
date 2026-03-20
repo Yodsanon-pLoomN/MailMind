@@ -26,7 +26,7 @@ export default function DraftPage() {
 
           <main className="flex-1 drop-shadow-lg">
             <section className="bg-white rounded-lg shadow p-6 min-h-[70vh]">
-              <h1 className="text-3xl font-bold mb-6">Drafts</h1>
+              <h1 className="text-3xl font-bold mb-6">Inbox</h1>
               <EmailList />
             </section>
           </main>

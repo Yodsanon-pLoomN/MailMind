@@ -72,3 +72,31 @@ exports.getThread = async (req, res) => {
     res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลอีเมล' });
   }
 };
+
+// 🌟 คอนโทรลเลอร์ใหม่: รับค่าจาก Frontend มาสั่ง Service ส่งอีเมล
+exports.replyToThread = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { messageId, replyText } = req.body;
+    const userId = req.user.id;
+
+    if (!replyText || !replyText.trim()) {
+      return res.status(400).json({ error: 'กรุณาพิมพ์ข้อความตอบกลับ' });
+    }
+
+    // สั่ง Service ส่งอีเมล
+    await gmailService.sendDirectReply(userId, threadId, messageId, replyText);
+
+    console.log(`[INFO] User ${userId} directly replied to thread ${threadId}`);
+    res.json({ success: true, message: 'ส่งอีเมลตอบกลับสำเร็จ!' });
+
+  } catch (error) {
+    console.error('Error sending direct reply:', error.message);
+    
+    if (error.message === 'UNAUTHORIZED') {
+      return res.status(401).json({ error: 'ไม่พบการเชื่อมต่อกับ Google กรุณาล็อกอินใหม่' });
+    }
+    
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการส่งอีเมลตอบกลับ' });
+  }
+};

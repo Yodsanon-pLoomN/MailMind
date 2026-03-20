@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Send, Sparkles } from 'lucide-react'
 import MessageCard from './MessageCard'
 import type { ThreadMessage } from '@/lib/type'
+import { headers } from 'next/dist/server/request/headers'
 
 export default function ThreadDialog({
   open,
@@ -146,48 +147,52 @@ export default function ThreadDialog({
     }
   }
 
-  // 🌟 3. ส่งอีเมลตอบกลับ
-  async function handleSend() {
-    if (!main || !reply.trim()) return
-    try {
-      setSendLoading(true)
-      setActionError(null)
+// 🌟 3. ส่งอีเมลตอบกลับ
+async function handleSend() {
+  if (!main || !reply.trim()) return;
+  
+  try {
+    setSendLoading(true);
+    setActionError(null);
 
-      const token = localStorage.getItem('app_token')
-      
-      // ✅ เรียก API สำหรับส่งอีเมลแบบ Direct
-      const res = await fetch(`${API_BASE}/api/emails/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ 
-          messageId: main.id, 
-          threadId: main.threadId,
-          replyText: reply 
-        }),
-      })
+    const token = localStorage.getItem('app_token');
+    
+    // ✅ เรียก API สำหรับส่งอีเมลแบบ Direct
+    const res = await fetch(`${API_BASE}/api/emails/threads/${threadId}`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  },
+  body: JSON.stringify({ 
+    messageId: main.id, 
+    threadId: main.threadId,
+    replyText: reply 
+  }),
+});
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'ไม่สามารถส่งอีเมลได้')
-      }
-
-      onEmailUpdate?.(main.id, { status: 'SENT' })
-      onOpenChange(false)
-      
-    } catch (e: unknown) {
-      const msg =
-        typeof e === 'object' && e !== null && 'message' in e
-          ? (e as { message: string }).message
-          : String(e)
-      console.error(msg)
-      setActionError(msg || 'Send error')
-    } finally {
-      setSendLoading(false)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'ไม่สามารถส่งอีเมลได้');
     }
+
+    onEmailUpdate?.(main.id, { status: 'SENT' });
+    onOpenChange(false);
+    
+  } catch (e: unknown) {
+    const msg =
+      typeof e === 'object' && e !== null && 'message' in e
+        ? (e as { message: string }).message
+        : String(e);
+        
+    // 🌟 ปิด console.error ไว้เพื่อไม่ให้ ESLint แจ้งเตือน (หรือลบบรรทัดนี้ทิ้งได้เลย)
+    // console.error(msg);
+    
+    setActionError(msg || 'Send error');
+  } finally {
+    setSendLoading(false);
   }
+}
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
