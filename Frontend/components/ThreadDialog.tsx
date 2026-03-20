@@ -40,7 +40,7 @@ export default function ThreadDialog({
   const [isAppointment, setIsAppointment] = React.useState<boolean | null>(null)
   const [reply, setReply] = React.useState('')
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 
   // 🌟 1. โหลดข้อมูล + ทำให้เมลอ่านแล้ว (Mark as Read)
   React.useEffect(() => {

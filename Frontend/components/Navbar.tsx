@@ -11,7 +11,7 @@ export default function Navbar() {
   const [isAiActive, setIsAiActive] = useState<boolean | null>(null);
   const [isToggling, setIsToggling] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
   useEffect(() => {
     const fetchStatus = async () => {

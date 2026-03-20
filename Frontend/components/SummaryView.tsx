@@ -16,7 +16,7 @@ export default function SummaryView() {
     setLoading(true);
     try {
       const token = localStorage.getItem('app_token');
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       
       const res = await fetch(`${API_BASE}/api/summary?type=${type}&force=${forceNew}`, {
         headers: {
