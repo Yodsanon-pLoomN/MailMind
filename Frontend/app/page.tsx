@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarCheck, Zap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bot, CalendarCheck, Zap } from "lucide-react";
 import { useAuth } from "@/provider/AuthProvider";
+
 export default function Home() {
   const { user } = useAuth();
   return (
@@ -78,12 +79,10 @@ export default function Home() {
                   ปรับโทนภาษา (Tone) คำลงท้าย และบริบทการตอบกลับให้เหมาะสมกับบุคคลโดยอัตโนมัติ
                 </p>
               </div>
-
             </div>
           </div>
         </section>
 
-        {/* CTA Section (ส่วนกระตุ้นให้ใช้งานก่อนจบ)*/}
         <section className="py-20 bg-slate-900 text-white">
           <div className="container mx-auto px-6 text-center max-w-3xl">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">พร้อมที่จะเปลี่ยนวิธีจัดการอีเมลหรือยัง?</h2>
@@ -101,10 +100,22 @@ export default function Home() {
       </main>
 
       {/*Footer*/}
-      <footer className="bg-slate-50 py-8 border-t border-slate-200">
-        <div className="container mx-auto px-6 text-center text-slate-500 text-sm">
-          <p>© {new Date().getFullYear()} MailMind. All rights reserved.</p>
-          <p className="mt-2 text-xs">A capstone project showcasing Generative AI integration.</p>
+      <footer className="bg-slate-50 py-10 border-t border-slate-200">
+        <div className="container mx-auto px-6 flex flex-col items-center justify-center">
+          <div className="flex flex-wrap justify-center gap-4 text-sm font-medium text-slate-600 mb-6">
+            <Link href="/terms" className="hover:text-blue-600 transition-colors">
+              Terms of Use
+            </Link>
+            <span className="text-slate-300">|</span>
+            <Link href="/privacy" className="hover:text-blue-600 transition-colors">
+              Privacy Policy
+            </Link>
+          </div>
+          
+          <div className="text-center text-slate-500 text-sm">
+            <p>© {new Date().getFullYear()} MailMind. All rights reserved.</p>
+            <p className="mt-2 text-xs">A capstone project showcasing Generative AI integration.</p>
+          </div>
         </div>
       </footer>
     </div>
