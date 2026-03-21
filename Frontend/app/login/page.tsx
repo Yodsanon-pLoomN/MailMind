@@ -42,7 +42,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 p-4">
       
       {/* =========================================
-          หน้าต่าง Login หลัก (ดีไซน์เดิมของคุณ)
+          หน้าต่าง Login หลัก
       ========================================= */}
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 relative z-10">
         <div className="text-center mb-8">
@@ -86,15 +86,24 @@ export default function LoginPage() {
                 target="_blank" 
                 className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
               >
-                ข้อตกลงการใช้งาน (Terms of Use)
+                ข้อตกลงการใช้งาน
               </Link>
-              {' '}ฉบับเต็ม
+              {' '}และ{' '}
+              <Link 
+                href="/privacy" 
+                target="_blank" 
+                className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
+              >
+                นโยบายความเป็นส่วนตัว
+              </Link>
             </p>
           </div>
         </div>
       </div>
 
-      {/*Modal ข้อตกลงการใช้งาน (Terms of Use)*/}
+      {/* =========================================
+          Modal ข้อตกลงการใช้งาน (Terms of Use)
+      ========================================= */}
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
@@ -156,7 +165,25 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <span className="text-sm text-slate-700 select-none group-hover:text-slate-900">
-                  ฉันได้อ่านและยอมรับ <span className="font-semibold text-blue-600">ข้อตกลงการใช้งาน</span> และ <span className="font-semibold text-blue-600">นโยบายความเป็นส่วนตัว</span> ของ MailMind แล้ว
+                  ฉันได้อ่านและยอมรับ{' '}
+                  <Link 
+                    href="/terms" 
+                    target="_blank"
+                    onClick={(e) => e.stopPropagation()} // ป้องกันการกดลิงก์แล้วไปกระทบ checkbox
+                    className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                  >
+                    ข้อตกลงการใช้งาน
+                  </Link> 
+                  {' '}และ{' '}
+                  <Link 
+                    href="/privacy" 
+                    target="_blank"
+                    onClick={(e) => e.stopPropagation()} // ป้องกันการกดลิงก์แล้วไปกระทบ checkbox
+                    className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                  >
+                    นโยบายความเป็นส่วนตัว
+                  </Link> 
+                  {' '}ของ MailMind แล้ว
                 </span>
               </label>
 

@@ -42,7 +42,9 @@ export default function Navbar() {
 if (pathname === '/login') {
     return null;
   }
-
+if (pathname === '/privacy') {
+    return null;
+  }
 if (pathname === '/terms') {
     return null;
   }
