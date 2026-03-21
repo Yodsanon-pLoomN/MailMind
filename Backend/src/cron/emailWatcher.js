@@ -82,14 +82,19 @@ const processUserEmails = async (user) => {
     });
     
     const messages = res.data.messages || [];
+  
     
     if (messages.length === 0) {
+      console.log(`${logPrefix} [SKIP] No new emails found. Sync time updated.`);
+      
       await prisma.userSetting.update({ 
         where: { userId: user.id },
         data: { lastEmailSync: new Date() }
       });
       return; 
     }
+
+    console.log(`${logPrefix} [INFO] Found ${messages.length} new emails.`);
 
     console.log(`${logPrefix} [INFO] Found ${messages.length} new emails.`);
 
