@@ -7,7 +7,6 @@ const { decrypt } = require('../utils/encryption');
 const { APPOINTMENT_KEYWORDS } = require('../config/constants'); 
 const pLimit = require('p-limit');
 
-// นำเข้า AI Services ทุกค่าย
 const geminiService = require('../services/ai/gemini'); 
 const openaiService = require('../services/ai/openai');
 const claudeService = require('../services/ai/claude');
@@ -17,7 +16,6 @@ const intelsphereService = require('../services/ai/intelsphere');
 let isCronRunning = false;
 const limit = pLimit(3); 
 
-// ฟังก์ชันแกะข้อความอีเมล
 const getEmailText = (payload) => {
   let text = '';
   if (!payload) return text;
@@ -36,7 +34,6 @@ const getEmailText = (payload) => {
   return text;
 };
 
-// ฟังก์ชันเลือก Service ของ AI ตามที่ผู้ใช้ตั้งค่าไว้
 const getAiService = (providerName) => {
   switch ((providerName || '').toLowerCase()) {
     case 'openai': return openaiService;
@@ -54,7 +51,6 @@ const processUserEmails = async (user) => {
   try {
     if (!user.setting) return;
     
-    // 🌟 [UPDATE] ดึงทั้ง Provider และ Model จาก DB
     const selectedProvider = (user.setting.defaultProvider || 'gemini').toLowerCase();
     const selectedModel = user.setting.defaultModel;
     const aiService = getAiService(selectedProvider);
@@ -83,7 +79,6 @@ const processUserEmails = async (user) => {
     
     const messages = res.data.messages || [];
   
-    
     if (messages.length === 0) {
       console.log(`${logPrefix} [SKIP] No new emails found. Sync time updated.`);
       
@@ -93,8 +88,6 @@ const processUserEmails = async (user) => {
       });
       return; 
     }
-
-    console.log(`${logPrefix} [INFO] Found ${messages.length} new emails.`);
 
     console.log(`${logPrefix} [INFO] Found ${messages.length} new emails.`);
 
@@ -214,6 +207,7 @@ const checkNewEmails = async () => {
     });
 
     const tasks = users.map(user => limit(() => processUserEmails(user)));
+    
     await Promise.all(tasks);
 
   } catch (error) {
@@ -225,8 +219,8 @@ const checkNewEmails = async () => {
 };
 
 const startCron = () => {
-  cron.schedule('*/5 * * * *', checkNewEmails); 
-  console.log("[SYSTEM] Email Watcher Cron Job started (Every 5 mins)");
+  cron.schedule('*/10 * * * *', checkNewEmails); 
+  console.log("[SYSTEM] Email Watcher Cron Job started (Every 10 mins)");
 };
 
 module.exports = { startCron };
