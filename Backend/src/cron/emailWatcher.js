@@ -2,16 +2,22 @@ const cron = require('node-cron');
 const { google } = require('googleapis');
 const prisma = require('../config/prisma');
 const { oauth2Client } = require('../config/google');
-const geminiService = require('../services/ai/gemini'); 
 const notificationService = require('../services/notification.service');
 const { decrypt } = require('../utils/encryption');
 const { APPOINTMENT_KEYWORDS } = require('../config/constants'); 
 const pLimit = require('p-limit');
 
-let isCronRunning = false;
+// นำเข้า AI Services ทุกค่าย
+const geminiService = require('../services/ai/gemini'); 
+const openaiService = require('../services/ai/openai');
+const claudeService = require('../services/ai/claude');
+const openrouterService = require('../services/ai/openrouter');
+const intelsphereService = require('../services/ai/intelsphere');
 
+let isCronRunning = false;
 const limit = pLimit(3); 
 
+// ฟังก์ชันแกะข้อความอีเมล
 const getEmailText = (payload) => {
   let text = '';
   if (!payload) return text;
@@ -30,12 +36,28 @@ const getEmailText = (payload) => {
   return text;
 };
 
+// ฟังก์ชันเลือก Service ของ AI ตามที่ผู้ใช้ตั้งค่าไว้
+const getAiService = (providerName) => {
+  switch ((providerName || '').toLowerCase()) {
+    case 'openai': return openaiService;
+    case 'claude': return claudeService;
+    case 'openrouter': return openrouterService;
+    case 'intelsphere': return intelsphereService;
+    case 'gemini':
+    default: return geminiService;
+  }
+};
 
 const processUserEmails = async (user) => {
   const logPrefix = `[${user.email}]`; 
   
   try {
     if (!user.setting) return;
+    
+    // 🌟 [UPDATE] ดึงทั้ง Provider และ Model จาก DB
+    const selectedProvider = (user.setting.defaultProvider || 'gemini').toLowerCase();
+    const selectedModel = user.setting.defaultModel;
+    const aiService = getAiService(selectedProvider);
     
     const userOauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -90,17 +112,17 @@ const processUserEmails = async (user) => {
         const hasKeyword = APPOINTMENT_KEYWORDS.some(kw => latestText.toLowerCase().includes(kw));
 
         if (hasKeyword) {
-          const geminiKeyObj = user.apiKeys.find(k => k.provider === 'gemini');
-          if (!geminiKeyObj) {
-            console.log(`${logPrefix} [SKIP] No Gemini API Key.`);
+          const apiKeyObj = user.apiKeys.find(k => k.provider.toLowerCase() === selectedProvider);
+          if (!apiKeyObj) {
+            console.log(`${logPrefix} [ERROR] คุณเลือกใช้ค่าย ${selectedProvider.toUpperCase()} แต่ยังไม่ได้ตั้งค่า API Key`);
             continue;
           }
           
           let realApiKey;
           try {
-            realApiKey = decrypt(geminiKeyObj.encryptedKey, geminiKeyObj.iv, geminiKeyObj.authTag);
+            realApiKey = decrypt(apiKeyObj.encryptedKey, apiKeyObj.iv, apiKeyObj.authTag);
           } catch (err) {
-            console.error(`${logPrefix} [ERROR] Decryption failed.`);
+            console.error(`${logPrefix} [ERROR] Decryption failed for ${selectedProvider.toUpperCase()} Key.`);
             continue;
           }
           
@@ -111,8 +133,9 @@ const processUserEmails = async (user) => {
             fullThreadText += `\n--- Email From: ${msgFrom} ---\n${tText.trim()}\n`;
           });
 
-          console.log(`${logPrefix} [AI] Analyzing with Gemini...`);
-          const aiResult = await geminiService.extractAppointment(realApiKey, fullThreadText);
+          console.log(`${logPrefix} [AI] Analyzing with ${selectedProvider.toUpperCase()} (Model: ${selectedModel || 'Default'})...`);
+          
+          const aiResult = await aiService.extractAppointment(realApiKey, fullThreadText, selectedModel);
           
           if (aiResult.isAppointment) {
             console.log(`${logPrefix} [SUCCESS] Appointment detected! Date: ${aiResult.date}`);
@@ -129,8 +152,8 @@ const processUserEmails = async (user) => {
               existingEvents = calRes.data.items || [];
             }
 
-            const draftResult = await geminiService.draftReplyWithCalendar(
-              realApiKey, fullThreadText, aiResult, existingEvents, user.setting
+            const draftResult = await aiService.draftReplyWithCalendar(
+              realApiKey, fullThreadText, aiResult, existingEvents, user.setting, selectedModel
             );
 
             if (draftResult.draftMessage) {
@@ -151,7 +174,7 @@ const processUserEmails = async (user) => {
               await notificationService.sendPendingDraftNotification(
                 userOauth2Client, user.email, { from: msgFrom, subject: cleanSubject }, eventDate
               );
-              console.log(`${logPrefix} [DONE] Draft created and Notification sent.`);
+              console.log(`${logPrefix} [DONE] Draft created via ${selectedProvider.toUpperCase()} and Notification sent.`);
             }
           }
         }
@@ -186,7 +209,6 @@ const checkNewEmails = async () => {
     });
 
     const tasks = users.map(user => limit(() => processUserEmails(user)));
-    
     await Promise.all(tasks);
 
   } catch (error) {
