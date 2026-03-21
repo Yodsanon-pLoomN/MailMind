@@ -6,6 +6,11 @@ exports.buildExtractionPrompt = (emailText, today) => {
     You are an executive assistant. Read the following email thread and extract appointment details.
     Current Date Context: Today is ${today}. Use this to infer the correct year for incomplete dates.
     
+    🚨 CRITICAL RULE FOR DATES: 
+    You MUST convert any Thai Buddhist Era (B.E. / พ.ศ.) year found in the text or context into the Gregorian calendar (A.D. / ค.ศ.) before outputting. 
+    Formula: Gregorian Year = Buddhist Year - 543 (e.g., 2569 becomes 2026). 
+    NEVER output a year greater than 2100.
+    
     Email content:
     """
     ${emailText}
@@ -20,7 +25,7 @@ exports.buildExtractionPrompt = (emailText, today) => {
     {
       "isAppointment": boolean,
       "title": "string or null",
-      "date": "ISO 8601 string or null",
+      "date": "ISO 8601 string or null (MUST use Gregorian year, e.g., '2026-03-30T17:00:00'. DO NOT use '2569')",
       "isTimeSpecified": boolean,
       "location": "string or null",
       "priority": "HIGH" | "NORMAL" | "LOW"
@@ -28,7 +33,6 @@ exports.buildExtractionPrompt = (emailText, today) => {
   `.trim();
 };
 
-// 🌟 เพิ่ม workingHours เข้ามาเป็น Parameter
 exports.buildDraftPrompt = (pronoun, politeParticle, tone, extractedData, emailText, existingEvents, fullSignature, workingHours) => {
   return `
     You are an AI personal assistant drafting an email reply on behalf of the user.
@@ -73,11 +77,6 @@ exports.buildDraftPrompt = (pronoun, politeParticle, tone, extractedData, emailT
     }
   `.trim();
 };
-
-
-// backend/src/services/ai/prompts.js
-
-// backend/src/services/ai/prompts.js
 
 exports.buildScheduleSummaryPrompt = (events, type, dateContext) => {
   // กำหนดหัวข้อตามประเภทที่เลือก

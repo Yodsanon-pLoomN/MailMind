@@ -18,7 +18,7 @@ exports.testKey = async (apiKey, modelName) => {
 exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
     const openai = new OpenAI({ baseURL: "[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)", apiKey });
-    const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
+    const today = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
     const response = await openai.chat.completions.create({

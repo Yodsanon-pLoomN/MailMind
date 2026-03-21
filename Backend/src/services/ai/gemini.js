@@ -16,7 +16,7 @@ exports.extractAppointment = async (apiKey, emailText, modelName) => {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelName || "gemini-2.5-flash" });
-    const today = new Date().toLocaleDateString('th-TH', { dateStyle: 'full' });
+    const today = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
     const prompt = buildExtractionPrompt(emailText, today);
 
     const result = await model.generateContent(prompt);
