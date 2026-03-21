@@ -6,10 +6,11 @@ exports.buildExtractionPrompt = (emailText, today) => {
     You are an executive assistant. Read the following email thread and extract appointment details.
     Current Date Context: Today is ${today}. Use this to infer the correct year for incomplete dates.
     
-    🚨 CRITICAL RULE FOR DATES: 
-    You MUST convert any Thai Buddhist Era (B.E. / พ.ศ.) year found in the text or context into the Gregorian calendar (A.D. / ค.ศ.) before outputting. 
-    Formula: Gregorian Year = Buddhist Year - 543 (e.g., 2569 becomes 2026). 
-    NEVER output a year greater than 2100.
+    CRITICAL RULES FOR DATES & TIMEZONES: 
+    1. You MUST convert any Thai Buddhist Era (B.E. / พ.ศ.) year found in the text or context into the Gregorian calendar (A.D. / ค.ศ.) before outputting. 
+       Formula: Gregorian Year = Buddhist Year - 543 (e.g., 2569 becomes 2026). 
+       NEVER output a year greater than 2100.
+    2. All extracted dates MUST end with the Thailand timezone offset "+07:00". NEVER use "Z" (UTC).
     
     Email content:
     """
@@ -25,7 +26,7 @@ exports.buildExtractionPrompt = (emailText, today) => {
     {
       "isAppointment": boolean,
       "title": "string or null",
-      "date": "ISO 8601 string or null (MUST use Gregorian year, e.g., '2026-03-30T17:00:00'. DO NOT use '2569')",
+      "date": "ISO 8601 string or null (MUST use Gregorian year AND strictly append +07:00, e.g., '2026-03-30T12:00:00+07:00')",
       "isTimeSpecified": boolean,
       "location": "string or null",
       "priority": "HIGH" | "NORMAL" | "LOW"
