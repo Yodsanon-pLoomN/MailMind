@@ -180,7 +180,7 @@ export default function SettingsPanel() {
       setTestResult({ text: "✅ API Key ใช้งานได้!", type: "success" });
     } catch (error: Error | unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      setTestResult({ text: `❌ ${errorMessage}`, type: "error" });
+      setTestResult({ text: `❌ API Key ไม่ถูกต้อง`, type: "error" });
     } finally {
       setTestingKey(false);
     }
