@@ -76,6 +76,11 @@ Clone the repository
 git clone https://github.com/your-username/MailMind.git
 cd MailMind
 ```
+Run PostgreSQL docker compose
+
+```bash
+docker compose up -d --build
+```
 
 Install backend dependencies
 
@@ -90,6 +95,8 @@ Install frontend dependencies
 cd ../frontend
 pnpm install
 ```
+
+
 
 ## Environment Variables
 
