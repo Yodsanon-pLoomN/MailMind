@@ -57,15 +57,15 @@ export default function DraftItem({ draft, onUpdateDraft }: DraftItemProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className={`inline-block h-2 w-2 rounded-full ${draft.status === 'PENDING' ? 'bg-blue-600' : 'bg-gray-400'}`} />
-              <span className="font-semibold text-gray-900 truncate">AI Assistant</span>
-              
+              <h3 className={`text-base mb-2 truncate ${draft.status === 'PENDING' ? 'font-semibold text-gray-900' : 'font-medium text-gray-600'}`}>
+              Re: {draft.subject || 'ไม่มีหัวข้อ'}
+              </h3>
               {/* 🌟 เรียกใช้ Priority Badge ตรงนี้ (ข้างๆ คำว่า AI Assistant) */}
               {renderPriority()}
             </div>
             
-            <h3 className={`text-base mb-2 truncate ${draft.status === 'PENDING' ? 'font-semibold text-gray-900' : 'font-medium text-gray-600'}`}>
-              Re: {draft.subject || 'ไม่มีหัวข้อ'}
-            </h3>
+            
+            
             <p className="text-sm text-gray-500 line-clamp-2">{draft.draftReply}</p>
           </div>
 
