@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  picture      String?
+  googleId     String?       @unique
+  accessToken  String?       @db.Text
+  refreshToken String?       @db.Text
+  
+  setting      UserSetting?
+  apiKeys      ApiKey[]
+  drafts       Draft[]     
+  summaries    Summary[]
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model UserSetting {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  isAutoReplyActive Boolean   @default(true)
+  defaultProvider   String?
+  defaultModel      String?
+  theme             String    @default("light")
+  
+  startTime         String    @default("09:00")
+  endTime           String    @default("17:00")
+  workDays          String[]  @default(["mon", "tue", "wed", "thu", "fri"])
+  timezone          String    @default("asia-bangkok")
+  
+  firstName         String?
+  lastName          String?
+  gender            String?
+  title             String    @default("mr")
+  position          String?
+  signature         String?
+  tone              String    @default("formal")
+  
+  lastEmailSync     DateTime? @default(now())
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model ApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String 
+  encryptedKey String
+  iv           String
+  authTag      String
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
+
+model Draft {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  messageId     String       @unique
+  threadId      String
+  subject       String?
+  
+  suggestedDate DateTime?
+  location      String?
+  
+  actionType    String?      // สถานะการนัดหมาย: "ACCEPT" (ลงปฏิทิน) หรือ "RESCHEDULE" (ขอเลื่อน/ห้ามลงปฏิทิน)
+  priority      String       @default("NORMAL") // ลำดับความสำคัญ: "HIGH", "NORMAL", "LOW"
+  
+  draftReply    String       @db.Text
+  status        String       @default("PENDING") // สถานะผู้ใช้ตรวจสอบ: PENDING, APPROVED, REJECTED
+  
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+enum SummaryType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model Summary {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        SummaryType // รายวัน, สัปดาห์, เดือน
+  periodStart DateTime
+  periodEnd   DateTime
+  
+  content     String      @db.Text
+  
+  createdAt   DateTime    @default(now())
+
+  @@unique([userId, type, periodStart, periodEnd]) 
+}
