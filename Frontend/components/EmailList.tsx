@@ -140,7 +140,7 @@ export default function EmailList() {
   }
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto">
       <div className="space-y-3">
         {emails.map((email) => (
           <EmailItem key={email.id} email={email} onEmailUpdate={handleEmailUpdate} />

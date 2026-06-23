@@ -58,10 +58,12 @@ export default function DraftList() {
   if (drafts.length === 0) return <div className="text-center py-12 text-gray-500">ไม่มีอีเมลรอการอนุมัติ</div>;
 
   return (
+    <div className="max-w-4xl mx-auto">
     <div className="space-y-3">
       {drafts.map((draft) => (
         <DraftItem key={draft.id} draft={draft} onUpdateDraft={handleUpdateDraftStatus} />
       ))}
+    </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
+    "dev": "npx prisma db push && node --watch server.js",
     "start": "npx prisma db push && node server.js",
     "postinstall": "prisma generate"
   },
